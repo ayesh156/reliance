@@ -8,6 +8,7 @@ import {
   Search, Plus, Package, Edit, Trash2, Eye, Filter,
   Grid3X3, List, X, ChevronLeft, ChevronRight,
   ChevronsLeft, ChevronsRight, Save, Ruler, Palette, Shirt,
+  Watch, Footprints, Zap, Briefcase, Crown, Gem, Baby,
 } from 'lucide-react';
 
 
@@ -15,6 +16,20 @@ import {
 export const Products: React.FC = () => {
   const { theme } = useTheme();
   const dark = theme === 'dark';
+
+  const categoryIcon = (category: string) => {
+    const cls = 'w-10 h-10';
+    if (category === "Men's Wear") return <Shirt className={`${cls} text-blue-400`} />;
+    if (category === "Women's Wear") return <Gem className={`${cls} text-pink-400`} />;
+    if (category === 'Denim') return <Ruler className={`${cls} text-indigo-400`} />;
+    if (category === "Kids' Wear") return <Baby className={`${cls} text-yellow-400`} />;
+    if (category === 'Accessories') return <Watch className={`${cls} text-amber-400`} />;
+    if (category === 'Footwear') return <Footprints className={`${cls} text-orange-400`} />;
+    if (category === 'Sportswear') return <Zap className={`${cls} text-green-400`} />;
+    if (category === 'Formal Wear') return <Briefcase className={`${cls} text-slate-400`} />;
+    if (category === 'Traditional') return <Crown className={`${cls} text-rose-400`} />;
+    return <Package className={`${cls} text-neutral-500`} />;
+  };
 
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState('');
@@ -362,7 +377,23 @@ export const Products: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {paginatedProducts.map(product => (
             <div key={product.id} className={`group rounded-2xl border overflow-hidden transition-all hover:shadow-lg ${dark ? 'bg-gradient-to-br from-neutral-900/80 to-neutral-950/80 border-neutral-800/60 hover:border-neutral-700' : 'bg-white border-gray-200 shadow-sm hover:border-gray-300'}`}>
-              <div className={`h-36 sm:h-40 flex items-center justify-center ${dark ? 'bg-neutral-800/50' : 'bg-gray-50'}`}><Package className={`w-10 h-10 ${dark ? 'text-neutral-700' : 'text-gray-300'}`} /></div>
+              <div className={`h-36 sm:h-40 flex items-center justify-center overflow-hidden relative ${dark ? 'bg-neutral-800/50' : 'bg-gray-50'}`}>
+                {product.image && (
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      (e.currentTarget.nextElementSibling as HTMLElement)?.style.setProperty('display', 'flex');
+                    }}
+                  />
+                )}
+                <div style={{ display: product.image ? 'none' : 'flex' }} className="absolute inset-0 flex-col items-center justify-center gap-2">
+                  {categoryIcon(product.category)}
+                  <span className={`text-[10px] font-medium ${dark ? 'text-neutral-600' : 'text-gray-400'}`}>{product.category}</span>
+                </div>
+              </div>
               <div className="p-3 sm:p-4 space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1"><p className={`text-sm font-semibold truncate ${dark ? 'text-white' : 'text-gray-900'}`}>{product.name}</p><p className={`text-[10px] mt-0.5 ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{product.sku}</p></div>
@@ -405,7 +436,30 @@ export const Products: React.FC = () => {
                 <tbody className={`divide-y ${dark ? 'divide-neutral-800/50' : 'divide-gray-100'}`}>
                   {paginatedProducts.map(product => (
                     <tr key={product.id} className={`transition-colors ${dark ? 'hover:bg-neutral-800/20' : 'hover:bg-gray-50'}`}>
-                      <td className="px-4 py-3"><p className={`text-sm font-medium ${dark ? 'text-white' : 'text-gray-900'}`}>{product.name}</p><div className="flex gap-1 mt-0.5">{product.colors.slice(0, 3).map(c => <span key={c} className={`text-[9px] px-1 py-0.5 rounded ${dark ? 'bg-neutral-800 text-neutral-500' : 'bg-gray-100 text-gray-400'}`}>{c}</span>)}</div></td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 min-w-10 rounded-lg overflow-hidden relative flex items-center justify-center border ${dark ? 'border-neutral-700/50 bg-neutral-800' : 'border-gray-200 bg-gray-50'}`}>
+                            {product.image && (
+                              <img
+                                src={product.image}
+                                alt=""
+                                className="absolute inset-0 w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  (e.currentTarget.nextElementSibling as HTMLElement)?.style.setProperty('display', 'flex');
+                                }}
+                              />
+                            )}
+                            <div style={{ display: product.image ? 'none' : 'flex' }} className="absolute inset-0 flex items-center justify-center">
+                              <span className="scale-75">{categoryIcon(product.category)}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <p className={`text-sm font-medium ${dark ? 'text-white' : 'text-gray-900'}`}>{product.name}</p>
+                            <div className="flex gap-1 mt-0.5">{product.colors.slice(0, 3).map(c => <span key={c} className={`text-[9px] px-1 py-0.5 rounded ${dark ? 'bg-neutral-800 text-neutral-500' : 'bg-gray-100 text-gray-400'}`}>{c}</span>)}</div>
+                          </div>
+                        </div>
+                      </td>
                       <td className={`px-4 py-3 text-xs ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>{product.sku}</td>
                       <td className={`px-4 py-3 text-xs ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>{product.category}</td>
                       <td className={`px-4 py-3 text-xs ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>{product.fabricType}</td>
@@ -429,9 +483,29 @@ export const Products: React.FC = () => {
           <div className="sm:hidden space-y-2">
             {paginatedProducts.map(product => (
               <div key={product.id} className={`rounded-xl border p-3 ${dark ? 'bg-neutral-900/50 border-neutral-800/60' : 'bg-white border-gray-200 shadow-sm'}`}>
-                <div className="flex items-start justify-between mb-2">
-                  <div><p className={`text-sm font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>{product.name}</p><p className={`text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{product.sku} &middot; {product.fabricType}</p></div>
-                  {statusBadge(product.status)}
+                <div className="flex items-start gap-3 mb-2">
+                  <div className={`w-12 h-12 shrink-0 rounded-lg overflow-hidden relative flex items-center justify-center border ${dark ? 'border-neutral-700/50 bg-neutral-800' : 'border-gray-200 bg-gray-50'}`}>
+                    {product.image && (
+                      <img
+                        src={product.image}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          (e.currentTarget.nextElementSibling as HTMLElement)?.style.setProperty('display', 'flex');
+                        }}
+                      />
+                    )}
+                    <div style={{ display: product.image ? 'none' : 'flex' }} className="absolute inset-0 flex items-center justify-center">
+                      <span className="scale-75">{categoryIcon(product.category)}</span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <div><p className={`text-sm font-bold leading-tight ${dark ? 'text-white' : 'text-gray-900'}`}>{product.name}</p><p className={`text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{product.sku} &middot; {product.fabricType}</p></div>
+                      {statusBadge(product.status)}
+                    </div>
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-xs mb-2">
                   <div><span className={dark ? 'text-neutral-500' : 'text-gray-400'}>Price</span><p className={`font-semibold ${dark ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(product.sellingPrice)}</p></div>
