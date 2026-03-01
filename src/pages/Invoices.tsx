@@ -1,0 +1,686 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
+import { formatCurrency } from '../lib/utils';
+import { mockInvoices as initialInvoices, type Invoice, type InvoiceItem } from '../data/mockData';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import {
+  FileText, Search, Plus, Eye, Edit, Trash2,
+  CheckCircle, List, SortAsc, SortDesc, LayoutGrid,
+  User, XCircle, CircleDollarSign,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  Clock, X, Barcode, Package,
+  CreditCard, Phone, Mail, Filter, Calendar,
+} from 'lucide-react';
+import { DeleteConfirmationModal } from '../components/modals/DeleteConfirmationModal';
+
+type ViewMode = 'grid' | 'table';
+
+// ===== INLINE CALENDAR COMPONENT =====
+const InlineCalendar: React.FC<{
+  value: string;
+  onChange: (date: string) => void;
+  dark: boolean;
+  onClose: () => void;
+}> = ({ value, onChange, dark, onClose }) => {
+  const [viewDate, setViewDate] = useState(() => {
+    const d = value ? new Date(value) : new Date();
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+
+  const daysInMonth = new Date(viewDate.year, viewDate.month + 1, 0).getDate();
+  const firstDayOfWeek = new Date(viewDate.year, viewDate.month, 1).getDay();
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const blanks = Array.from({ length: firstDayOfWeek }, (_, i) => i);
+  const selectedDate = value ? new Date(value) : null;
+
+  const prevMonth = () => setViewDate(prev => prev.month === 0 ? { year: prev.year - 1, month: 11 } : { ...prev, month: prev.month - 1 });
+  const nextMonth = () => setViewDate(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { ...prev, month: prev.month + 1 });
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const isSelected = (day: number) => selectedDate && selectedDate.getFullYear() === viewDate.year && selectedDate.getMonth() === viewDate.month && selectedDate.getDate() === day;
+  const isToday = (day: number) => { const t = new Date(); return t.getFullYear() === viewDate.year && t.getMonth() === viewDate.month && t.getDate() === day; };
+
+  return (
+    <div className={`p-3 rounded-xl border shadow-xl ${dark ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
+      <div className="flex items-center justify-between mb-2">
+        <button onClick={prevMonth} className={`p-1 rounded-lg ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}><ChevronLeft className="w-4 h-4" /></button>
+        <span className={`text-sm font-semibold ${dark ? 'text-white' : 'text-gray-900'}`}>{monthNames[viewDate.month]} {viewDate.year}</span>
+        <button onClick={nextMonth} className={`p-1 rounded-lg ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}><ChevronRight className="w-4 h-4" /></button>
+      </div>
+      <div className="grid grid-cols-7 gap-0.5 text-center">
+        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+          <div key={d} className={`text-[10px] font-medium py-1 ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{d}</div>
+        ))}
+        {blanks.map(b => <div key={`bl-${b}`} />)}
+        {days.map(day => (
+          <button
+            key={day}
+            onClick={() => {
+              const m = (viewDate.month + 1).toString().padStart(2, '0');
+              const d = day.toString().padStart(2, '0');
+              onChange(`${viewDate.year}-${m}-${d}`);
+              onClose();
+            }}
+            className={`w-7 h-7 rounded-lg text-xs font-medium transition-all ${
+              isSelected(day)
+                ? dark ? 'bg-white text-black' : 'bg-brand-900 text-white'
+                : isToday(day)
+                ? dark ? 'bg-neutral-800 text-white ring-1 ring-neutral-600' : 'bg-gray-100 text-gray-900 ring-1 ring-gray-300'
+                : dark ? 'text-neutral-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            {day}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const Invoices: React.FC = () => {
+  const { theme } = useTheme();
+  const dark = theme === 'dark';
+  const navigate = useNavigate();
+
+  // Data
+  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(9);
+
+  // Advanced filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
+  const [showStartCal, setShowStartCal] = useState(false);
+  const [showEndCal, setShowEndCal] = useState(false);
+  const startCalRef = useRef<HTMLDivElement>(null);
+  const endCalRef = useRef<HTMLDivElement>(null);
+
+  // Modals
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDetailDrawer, setShowDetailDrawer] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+
+  // Edit form state
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editCustomerPhone, setEditCustomerPhone] = useState('');
+  const [editPaymentMethod, setEditPaymentMethod] = useState<Invoice['paymentMethod']>('cash');
+  const [editPaidAmount, setEditPaidAmount] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editStatus, setEditStatus] = useState<Invoice['status']>('pending');
+  const [editNotes, setEditNotes] = useState('');
+  const [editItems, setEditItems] = useState<InvoiceItem[]>([]);
+  const [showEditDueCal, setShowEditDueCal] = useState(false);
+
+  // Items per page options
+  const gridPerPageOptions = [6, 9, 12, 18];
+  const tablePerPageOptions = [5, 10, 20, 50];
+
+  useEffect(() => {
+    setItemsPerPage(viewMode === 'table' ? 10 : 9);
+  }, [viewMode]);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (startCalRef.current && !startCalRef.current.contains(e.target as Node)) setShowStartCal(false);
+      if (endCalRef.current && !endCalRef.current.contains(e.target as Node)) setShowEndCal(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const activeFilterCount = [dateFrom, dateTo, priceMin, priceMax].filter(Boolean).length + (statusFilter !== 'all' ? 1 : 0);
+
+  // Filter
+  const filteredInvoices = useMemo(() => {
+    return invoices
+      .filter(inv => {
+        const q = searchQuery.toLowerCase();
+        const matchSearch = !q || inv.invoiceNumber.toLowerCase().includes(q) || inv.customerName.toLowerCase().includes(q) || inv.customerPhone.includes(q);
+        const matchStatus = statusFilter === 'all' || inv.status === statusFilter;
+        const matchDateFrom = !dateFrom || new Date(inv.createdAt) >= new Date(dateFrom);
+        const matchDateTo = !dateTo || new Date(inv.createdAt) <= new Date(dateTo + 'T23:59:59');
+        const matchPriceMin = !priceMin || inv.total >= parseFloat(priceMin);
+        const matchPriceMax = !priceMax || inv.total <= parseFloat(priceMax);
+        return matchSearch && matchStatus && matchDateFrom && matchDateTo && matchPriceMin && matchPriceMax;
+      })
+      .sort((a, b) => {
+        const da = new Date(a.createdAt).getTime();
+        const db = new Date(b.createdAt).getTime();
+        return sortOrder === 'asc' ? da - db : db - da;
+      });
+  }, [invoices, searchQuery, statusFilter, sortOrder, dateFrom, dateTo, priceMin, priceMax]);
+
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
+  const paginatedInvoices = filteredInvoices.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, viewMode, itemsPerPage, dateFrom, dateTo, priceMin, priceMax]);
+
+  const stats = useMemo(() => {
+    const total = invoices.length;
+    const paidTotal = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.total, 0);
+    const partialAmt = invoices.filter(i => i.status === 'partial').reduce((s, i) => s + (i.paidAmount || 0), 0);
+    const pendingAmt = invoices.filter(i => i.status === 'pending').reduce((s, i) => s + i.total, 0);
+    const paidCount = invoices.filter(i => i.status === 'paid').length;
+    const partialCount = invoices.filter(i => i.status === 'partial').length;
+    const pendingCount = invoices.filter(i => i.status === 'pending').length;
+    return { total, paidTotal, partialAmt, pendingAmt, paidCount, partialCount, pendingCount };
+  }, [invoices]);
+
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || dateFrom || dateTo || priceMin || priceMax;
+
+  // Handlers
+  const openEditModal = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setEditCustomerName(invoice.customerName);
+    setEditCustomerPhone(invoice.customerPhone);
+    setEditPaymentMethod(invoice.paymentMethod);
+    setEditPaidAmount(invoice.paidAmount.toString());
+    setEditDueDate(invoice.dueDate);
+    setEditStatus(invoice.status);
+    setEditNotes(invoice.notes || '');
+    setEditItems([...invoice.items]);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedInvoice) return;
+    const paid = parseFloat(editPaidAmount) || 0;
+    const subtotal = editItems.reduce((s, i) => s + i.total, 0);
+    const discount = editItems.reduce((s, i) => s + i.discount * i.quantity, 0);
+    let autoStatus = editStatus;
+    if (editStatus !== 'cancelled') {
+      if (paid >= subtotal) autoStatus = 'paid';
+      else if (paid > 0) autoStatus = 'partial';
+      else autoStatus = 'pending';
+    }
+    setInvoices(prev => prev.map(inv => inv.id === selectedInvoice.id ? {
+      ...inv, customerName: editCustomerName, customerPhone: editCustomerPhone, paymentMethod: editPaymentMethod,
+      paidAmount: Math.min(paid, subtotal), dueDate: editDueDate, status: autoStatus, notes: editNotes || undefined,
+      items: editItems, subtotal, discount, total: subtotal,
+    } : inv));
+    setShowEditModal(false);
+    setSelectedInvoice(null);
+    toast.success('Invoice updated', { description: `${selectedInvoice.invoiceNumber} updated` });
+  };
+
+  const handleDeleteInvoice = () => {
+    if (!selectedInvoice) return;
+    setInvoices(prev => prev.filter(i => i.id !== selectedInvoice.id));
+    toast.success('Invoice deleted', { description: `${selectedInvoice.invoiceNumber} deleted` });
+    setSelectedInvoice(null);
+    if (showDetailDrawer) setShowDetailDrawer(false);
+  };
+
+  const openDetailDrawer = (invoice: Invoice) => { setSelectedInvoice(invoice); setShowDetailDrawer(true); };
+  const clearAllFilters = () => { setSearchQuery(''); setStatusFilter('all'); setDateFrom(''); setDateTo(''); setPriceMin(''); setPriceMax(''); };
+
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case 'paid': return dark ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-green-50 text-green-600 border-green-200';
+      case 'partial': return dark ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-200';
+      case 'pending': return dark ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-red-50 text-red-600 border-red-200';
+      case 'cancelled': return dark ? 'bg-neutral-500/10 text-neutral-400 border-neutral-500/20' : 'bg-gray-50 text-gray-500 border-gray-200';
+      default: return '';
+    }
+  };
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'paid': return <CheckCircle className="w-3.5 h-3.5" />;
+      case 'partial': return <CircleDollarSign className="w-3.5 h-3.5" />;
+      case 'pending': return <Clock className="w-3.5 h-3.5" />;
+      case 'cancelled': return <XCircle className="w-3.5 h-3.5" />;
+      default: return null;
+    }
+  };
+  const getStatusLabel = (status: string) => {
+    switch (status) { case 'paid': return 'Paid'; case 'partial': return 'Partial'; case 'pending': return 'Pending'; case 'cancelled': return 'Cancelled'; default: return status; }
+  };
+  const isOverdue = (inv: Invoice) => new Date(inv.dueDate) < new Date() && inv.status !== 'paid' && inv.status !== 'cancelled';
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const updateEditItemQty = (idx: number, qty: number) => {
+    if (qty < 1) return;
+    setEditItems(prev => prev.map((item, i) => i === idx ? { ...item, quantity: qty, total: qty * item.unitPrice - item.discount * qty } : item));
+  };
+  const removeEditItem = (idx: number) => setEditItems(prev => prev.filter((_, i) => i !== idx));
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 5) { for (let i = 1; i <= totalPages; i++) pages.push(i); }
+    else if (currentPage <= 3) { for (let i = 1; i <= 4; i++) pages.push(i); pages.push('...'); pages.push(totalPages); }
+    else if (currentPage >= totalPages - 2) { pages.push(1); pages.push('...'); for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i); }
+    else { pages.push(1); pages.push('...'); for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i); pages.push('...'); pages.push(totalPages); }
+    return pages;
+  };
+
+  const perPageOptions = viewMode === 'table' ? tablePerPageOptions : gridPerPageOptions;
+
+  return (
+    <div className="space-y-4 sm:space-y-6 pb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div>
+          <h1 className={`text-xl sm:text-2xl lg:text-3xl font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>Invoices</h1>
+          <p className={`mt-0.5 text-sm ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Manage and track all your invoices</p>
+        </div>
+        <button onClick={() => navigate('/invoices/create')} className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm shadow-lg transition-all ${dark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-brand-900 text-white hover:bg-brand-800'}`}>
+          <Plus className="w-5 h-5" /><span>Create Invoice</span>
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {[
+          { label: 'Total', value: stats.total.toString(), icon: FileText, colorClass: 'text-blue-400', bgClass: 'bg-blue-500/10', sub: `${filteredInvoices.length} shown` },
+          { label: 'Paid Revenue', value: formatCurrency(stats.paidTotal), icon: CheckCircle, colorClass: 'text-green-400', bgClass: 'bg-green-500/10', sub: `${stats.paidCount} invoices` },
+          { label: 'Partial', value: formatCurrency(stats.partialAmt), icon: CircleDollarSign, colorClass: 'text-amber-400', bgClass: 'bg-amber-500/10', sub: `${stats.partialCount} invoices` },
+          { label: 'Pending', value: formatCurrency(stats.pendingAmt), icon: XCircle, colorClass: 'text-red-400', bgClass: 'bg-red-500/10', sub: `${stats.pendingCount} invoices` },
+        ].map((stat, i) => (
+          <div key={i} className={`p-3 sm:p-4 rounded-xl border ${dark ? 'bg-neutral-900/50 border-neutral-800/60' : 'bg-white border-gray-200 shadow-sm'}`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${stat.bgClass}`}>
+                <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.colorClass}`} />
+              </div>
+              <div className="min-w-0">
+                <p className={`text-sm sm:text-lg font-bold truncate ${dark ? 'text-white' : 'text-gray-900'}`}>{stat.value}</p>
+                <p className={`text-[10px] sm:text-xs truncate ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{stat.sub}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Search & Controls */}
+      <div className={`p-3 sm:p-4 rounded-2xl border ${dark ? 'bg-neutral-900/30 border-neutral-800/60' : 'bg-white border-gray-200'}`}>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border flex-1 ${dark ? 'bg-neutral-800/50 border-neutral-700/50' : 'bg-gray-50 border-gray-200'}`}>
+            <Search className={`w-4 h-4 flex-shrink-0 ${dark ? 'text-neutral-500' : 'text-gray-400'}`} />
+            <input type="text" placeholder="Search by invoice no., customer, phone..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              className={`bg-transparent border-none outline-none flex-1 min-w-0 text-sm ${dark ? 'text-white placeholder-neutral-500' : 'text-gray-900 placeholder-gray-400'}`} />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
+              showFilters || activeFilterCount > 0 ? dark ? 'bg-white text-black border-white' : 'bg-brand-900 text-white border-brand-900' : dark ? 'border-neutral-700 text-neutral-400 hover:border-neutral-600 hover:bg-neutral-800' : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+            }`}>
+              <Filter className="w-3.5 h-3.5" /> Filters
+              {activeFilterCount > 0 && <span className={`ml-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${dark ? 'bg-black/20 text-black' : 'bg-white/30 text-white'}`}>{activeFilterCount}</span>}
+            </button>
+            <button onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')} className={`p-2 rounded-xl border transition-colors ${dark ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-400' : 'border-gray-200 hover:bg-gray-50 text-gray-500'}`}>
+              {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+            </button>
+            <div className={`flex items-center rounded-xl overflow-hidden border ${dark ? 'border-neutral-700' : 'border-gray-200'}`}>
+              <button onClick={() => setViewMode('grid')} className={`p-2 transition-colors ${viewMode === 'grid' ? dark ? 'bg-white text-black' : 'bg-brand-900 text-white' : dark ? 'bg-neutral-900 text-neutral-400 hover:bg-neutral-800' : 'bg-white text-gray-500 hover:bg-gray-50'}`}><LayoutGrid className="w-4 h-4" /></button>
+              <button onClick={() => setViewMode('table')} className={`p-2 transition-colors ${viewMode === 'table' ? dark ? 'bg-white text-black' : 'bg-brand-900 text-white' : dark ? 'bg-neutral-900 text-neutral-400 hover:bg-neutral-800' : 'bg-white text-gray-500 hover:bg-gray-50'}`}><List className="w-4 h-4" /></button>
+            </div>
+            {hasActiveFilters && (
+              <button onClick={clearAllFilters} className={`flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs ${dark ? 'text-neutral-400 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
+                <X className="w-3 h-3" /> Clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Expandable Filters */}
+        {showFilters && (
+          <div className={`mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 ${dark ? 'border-neutral-800/60' : 'border-gray-200'}`}>
+            <div>
+              <label className={`block text-xs font-medium mb-1.5 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Status</label>
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={`w-full px-3 py-2 rounded-xl border text-sm appearance-none ${dark ? 'bg-neutral-800/50 border-neutral-700/50 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
+                <option value="all">All Status</option>
+                <option value="paid">Paid</option><option value="partial">Partial</option><option value="pending">Pending</option><option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div className="relative" ref={startCalRef}>
+              <label className={`block text-xs font-medium mb-1.5 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Date From</label>
+              <button onClick={() => { setShowStartCal(!showStartCal); setShowEndCal(false); }} className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-sm text-left ${dark ? 'bg-neutral-800/50 border-neutral-700/50' : 'bg-white border-gray-200'} ${dateFrom ? dark ? 'text-white' : 'text-gray-900' : dark ? 'text-neutral-500' : 'text-gray-400'}`}>
+                <Calendar className="w-4 h-4 flex-shrink-0" />
+                {dateFrom ? fmtDate(dateFrom) : 'Select date'}
+                {dateFrom && <X className="w-3 h-3 ml-auto hover:text-red-400" onClick={(e) => { e.stopPropagation(); setDateFrom(''); }} />}
+              </button>
+              {showStartCal && <div className="absolute top-full left-0 mt-1 z-50"><InlineCalendar dark={dark} value={dateFrom} onChange={setDateFrom} onClose={() => setShowStartCal(false)} /></div>}
+            </div>
+            <div className="relative" ref={endCalRef}>
+              <label className={`block text-xs font-medium mb-1.5 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Date To</label>
+              <button onClick={() => { setShowEndCal(!showEndCal); setShowStartCal(false); }} className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-sm text-left ${dark ? 'bg-neutral-800/50 border-neutral-700/50' : 'bg-white border-gray-200'} ${dateTo ? dark ? 'text-white' : 'text-gray-900' : dark ? 'text-neutral-500' : 'text-gray-400'}`}>
+                <Calendar className="w-4 h-4 flex-shrink-0" />
+                {dateTo ? fmtDate(dateTo) : 'Select date'}
+                {dateTo && <X className="w-3 h-3 ml-auto hover:text-red-400" onClick={(e) => { e.stopPropagation(); setDateTo(''); }} />}
+              </button>
+              {showEndCal && <div className="absolute top-full left-0 mt-1 z-50"><InlineCalendar dark={dark} value={dateTo} onChange={setDateTo} onClose={() => setShowEndCal(false)} /></div>}
+            </div>
+            <div>
+              <label className={`block text-xs font-medium mb-1.5 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Price Range (LKR)</label>
+              <div className="flex items-center gap-2">
+                <input type="number" placeholder="Min" value={priceMin} onChange={e => setPriceMin(e.target.value)} className={`w-full px-2.5 py-2 rounded-xl border text-sm ${dark ? 'bg-neutral-800/50 border-neutral-700/50 text-white placeholder-neutral-500' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`} />
+                <span className={`text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>—</span>
+                <input type="number" placeholder="Max" value={priceMax} onChange={e => setPriceMax(e.target.value)} className={`w-full px-2.5 py-2 rounded-xl border text-sm ${dark ? 'bg-neutral-800/50 border-neutral-700/50 text-white placeholder-neutral-500' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`} />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      {filteredInvoices.length === 0 ? (
+        <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${dark ? 'bg-neutral-900/30 border-neutral-800/60' : 'bg-white border-gray-200'}`}>
+          <FileText className={`w-12 h-12 mb-3 ${dark ? 'text-neutral-700' : 'text-gray-300'}`} />
+          <p className={`text-sm font-medium ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>No invoices found</p>
+          <button onClick={() => navigate('/invoices/create')} className={`mt-3 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium ${dark ? 'bg-white text-black' : 'bg-brand-900 text-white'}`}>
+            <Plus className="w-4 h-4" /> Create Invoice
+          </button>
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {paginatedInvoices.map(inv => (
+            <div key={inv.id} className={`group rounded-2xl border overflow-hidden transition-all duration-200 ${dark ? 'bg-neutral-900/50 border-neutral-800/60 hover:border-neutral-700' : 'bg-white border-gray-200 hover:border-gray-300 shadow-sm'}`}>
+              <div className={`h-1 ${inv.status === 'paid' ? 'bg-gradient-to-r from-green-500 to-emerald-400' : inv.status === 'partial' ? 'bg-gradient-to-r from-amber-500 to-orange-400' : inv.status === 'cancelled' ? 'bg-gradient-to-r from-neutral-500 to-neutral-400' : 'bg-gradient-to-r from-red-500 to-rose-400'}`} />
+              <div className="p-3 sm:p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="min-w-0">
+                    <p className={`text-sm font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>{inv.invoiceNumber}</p>
+                    <div className={`flex items-center gap-1.5 mt-1 text-xs ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                      <User className="w-3 h-3 flex-shrink-0" /><span className="truncate">{inv.customerName}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusStyle(inv.status)}`}>{getStatusIcon(inv.status)}{getStatusLabel(inv.status)}</span>
+                    {isOverdue(inv) && <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${dark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600'}`}>OVERDUE</span>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className={`p-2 rounded-lg ${dark ? 'bg-neutral-800/50' : 'bg-gray-50'}`}>
+                    <p className={`text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>Created</p>
+                    <p className={`text-xs font-medium ${dark ? 'text-white' : 'text-gray-900'}`}>{fmtDate(inv.createdAt)}</p>
+                  </div>
+                  <div className={`p-2 rounded-lg ${dark ? 'bg-neutral-800/50' : 'bg-gray-50'}`}>
+                    <p className={`text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>Due</p>
+                    <p className={`text-xs font-medium ${isOverdue(inv) ? 'text-red-400' : dark ? 'text-white' : 'text-gray-900'}`}>{fmtDate(inv.dueDate)}</p>
+                  </div>
+                </div>
+                <div className={`p-2.5 rounded-xl ${inv.status === 'paid' ? dark ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-200' : inv.status === 'partial' ? dark ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200' : inv.status === 'cancelled' ? dark ? 'bg-neutral-800/50 border border-neutral-700/50' : 'bg-gray-50 border border-gray-200' : dark ? 'bg-red-500/10 border border-red-500/20' : 'bg-red-50 border border-red-200'}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-xs ${dark ? 'text-neutral-300' : 'text-gray-600'}`}>Total</span>
+                    <span className={`text-base font-bold ${inv.status === 'paid' ? 'text-green-500' : inv.status === 'partial' ? 'text-amber-500' : inv.status === 'cancelled' ? dark ? 'text-neutral-400' : 'text-gray-500' : 'text-red-500'}`}>{formatCurrency(inv.total)}</span>
+                  </div>
+                  {inv.status !== 'paid' && inv.status !== 'cancelled' && (
+                    <>
+                      <div className="flex items-center justify-between text-[10px] mt-1">
+                        <span className={dark ? 'text-green-400' : 'text-green-600'}>Paid: {formatCurrency(inv.paidAmount)}</span>
+                        <span className={dark ? 'text-amber-400' : 'text-amber-600'}>Due: {formatCurrency(inv.total - inv.paidAmount)}</span>
+                      </div>
+                      <div className={`h-1 rounded-full mt-1.5 ${dark ? 'bg-neutral-700' : 'bg-gray-200'}`}>
+                        <div className={`h-full rounded-full bg-gradient-to-r ${inv.status === 'partial' ? 'from-amber-400 to-orange-400' : 'from-red-400 to-rose-400'}`} style={{ width: `${Math.min((inv.paidAmount / inv.total) * 100, 100)}%` }} />
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className={`flex items-center gap-1.5 mt-2 text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>
+                  <Package className="w-3 h-3" /><span>{inv.items.length} item{inv.items.length > 1 ? 's' : ''} &middot; {inv.items.reduce((s, i) => s + i.quantity, 0)} units</span>
+                </div>
+                <div className={`flex gap-1.5 mt-3 pt-3 border-t ${dark ? 'border-neutral-800' : 'border-gray-100'}`}>
+                  <button onClick={() => openDetailDrawer(inv)} className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium transition-all ${dark ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}><Eye className="w-3.5 h-3.5" /> View</button>
+                  <button onClick={() => openEditModal(inv)} className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium transition-all ${dark ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}><Edit className="w-3.5 h-3.5" /> Edit</button>
+                  <button onClick={() => { setSelectedInvoice(inv); setShowDeleteModal(true); }} className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium transition-all ${dark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}><Trash2 className="w-3.5 h-3.5" /> Delete</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Desktop Table */}
+          <div className={`hidden sm:block rounded-2xl border overflow-hidden ${dark ? 'border-neutral-800/60' : 'border-gray-200'}`}>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className={dark ? 'bg-neutral-800/50' : 'bg-gray-50'}>
+                  <tr>
+                    {['Invoice', 'Customer', 'Date', 'Due Date', 'Total', 'Paid', 'Status', 'Actions'].map(h => (
+                      <th key={h} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${dark ? 'divide-neutral-800/50' : 'divide-gray-100'}`}>
+                  {paginatedInvoices.map(inv => (
+                    <tr key={inv.id} className={`transition-colors ${dark ? 'hover:bg-neutral-800/20' : 'hover:bg-gray-50'}`}>
+                      <td className={`px-4 py-3 text-sm font-medium ${dark ? 'text-white' : 'text-gray-900'}`}>{inv.invoiceNumber}</td>
+                      <td className="px-4 py-3"><p className={`text-sm ${dark ? 'text-white' : 'text-gray-900'}`}>{inv.customerName}</p><p className={`text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{inv.customerPhone}</p></td>
+                      <td className={`px-4 py-3 text-xs ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>{fmtDate(inv.createdAt)}</td>
+                      <td className={`px-4 py-3 text-xs ${isOverdue(inv) ? 'text-red-400 font-medium' : dark ? 'text-neutral-400' : 'text-gray-500'}`}>{fmtDate(inv.dueDate)}</td>
+                      <td className={`px-4 py-3 text-sm font-semibold ${dark ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(inv.total)}</td>
+                      <td className={`px-4 py-3 text-sm ${dark ? 'text-neutral-300' : 'text-gray-700'}`}>{formatCurrency(inv.paidAmount)}</td>
+                      <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusStyle(inv.status)}`}>{getStatusIcon(inv.status)}{getStatusLabel(inv.status)}</span></td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => openDetailDrawer(inv)} className={`p-1.5 rounded-lg transition-colors ${dark ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-100 text-gray-400'}`}><Eye className="w-4 h-4" /></button>
+                          <button onClick={() => openEditModal(inv)} className={`p-1.5 rounded-lg transition-colors ${dark ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-100 text-gray-400'}`}><Edit className="w-4 h-4" /></button>
+                          <button onClick={() => { setSelectedInvoice(inv); setShowDeleteModal(true); }} className={`p-1.5 rounded-lg transition-colors ${dark ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-red-50 text-red-400'}`}><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {/* Mobile Cards for Table Mode */}
+          <div className="sm:hidden space-y-2">
+            {paginatedInvoices.map(inv => (
+              <div key={inv.id} className={`rounded-xl border p-3 ${dark ? 'bg-neutral-900/50 border-neutral-800/60' : 'bg-white border-gray-200 shadow-sm'}`}>
+                <div className="flex items-start justify-between mb-2">
+                  <div><p className={`text-sm font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>{inv.invoiceNumber}</p><p className={`text-xs ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>{inv.customerName}</p></div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusStyle(inv.status)}`}>{getStatusIcon(inv.status)}{getStatusLabel(inv.status)}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-2">
+                  <div className="flex justify-between"><span className={dark ? 'text-neutral-500' : 'text-gray-400'}>Date</span><span className={dark ? 'text-neutral-300' : 'text-gray-700'}>{fmtDate(inv.createdAt)}</span></div>
+                  <div className="flex justify-between"><span className={dark ? 'text-neutral-500' : 'text-gray-400'}>Due</span><span className={isOverdue(inv) ? 'text-red-400' : dark ? 'text-neutral-300' : 'text-gray-700'}>{fmtDate(inv.dueDate)}</span></div>
+                  <div className="flex justify-between"><span className={dark ? 'text-neutral-500' : 'text-gray-400'}>Total</span><span className={`font-semibold ${dark ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(inv.total)}</span></div>
+                  <div className="flex justify-between"><span className={dark ? 'text-neutral-500' : 'text-gray-400'}>Paid</span><span className={dark ? 'text-neutral-300' : 'text-gray-700'}>{formatCurrency(inv.paidAmount)}</span></div>
+                </div>
+                <div className={`flex gap-1 pt-2 border-t ${dark ? 'border-neutral-800' : 'border-gray-100'}`}>
+                  <button onClick={() => openDetailDrawer(inv)} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${dark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>View</button>
+                  <button onClick={() => openEditModal(inv)} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${dark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>Edit</button>
+                  <button onClick={() => { setSelectedInvoice(inv); setShowDeleteModal(true); }} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${dark ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600'}`}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1">
+          <p className={`text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>
+            Showing {filteredInvoices.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}–{Math.min(currentPage * itemsPerPage, filteredInvoices.length)} of {filteredInvoices.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className={`p-1.5 rounded-lg disabled:opacity-30 ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}><ChevronsLeft className="w-4 h-4" /></button>
+            <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className={`p-1.5 rounded-lg disabled:opacity-30 ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}><ChevronLeft className="w-4 h-4" /></button>
+            <span className={`sm:hidden px-2 text-xs font-medium ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>{currentPage} / {totalPages}</span>
+            <div className="hidden sm:flex items-center gap-1">
+              {getPageNumbers().map((pg, i) => typeof pg === 'number' ? (
+                <button key={i} onClick={() => setCurrentPage(pg)} className={`w-8 h-8 rounded-lg text-xs font-medium ${currentPage === pg ? dark ? 'bg-white text-black' : 'bg-brand-900 text-white' : dark ? 'text-neutral-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>{pg}</button>
+              ) : <span key={i} className={`px-1 ${dark ? 'text-neutral-600' : 'text-gray-300'}`}>&hellip;</span>)}
+            </div>
+            <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className={`p-1.5 rounded-lg disabled:opacity-30 ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}><ChevronRight className="w-4 h-4" /></button>
+            <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className={`p-1.5 rounded-lg disabled:opacity-30 ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}><ChevronsRight className="w-4 h-4" /></button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>Show:</span>
+            <div className={`flex items-center rounded-lg border overflow-hidden ${dark ? 'border-neutral-700' : 'border-gray-200'}`}>
+              {perPageOptions.map(opt => (
+                <button key={opt} onClick={() => setItemsPerPage(opt)} className={`px-2.5 py-1 text-xs font-medium transition-all ${itemsPerPage === opt ? dark ? 'bg-white text-black shadow-md' : 'bg-brand-900 text-white shadow-md' : dark ? 'text-neutral-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-50'}`}>{opt}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Drawer */}
+      {showDetailDrawer && selectedInvoice && (
+        <>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[90]" onClick={() => setShowDetailDrawer(false)} />
+          <div className={`fixed top-0 right-0 bottom-0 w-full sm:w-[480px] z-[91] overflow-y-auto ${dark ? 'bg-neutral-950 border-l border-neutral-800' : 'bg-white border-l border-gray-200 shadow-2xl'}`}>
+            <div className={`sticky top-0 z-10 flex items-center justify-between px-4 sm:px-5 py-4 border-b ${dark ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-gray-200'}`}>
+              <div>
+                <h2 className={`text-lg font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>{selectedInvoice.invoiceNumber}</h2>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border mt-1 ${getStatusStyle(selectedInvoice.status)}`}>{getStatusIcon(selectedInvoice.status)}{getStatusLabel(selectedInvoice.status)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { openEditModal(selectedInvoice); setShowDetailDrawer(false); }} className={`p-2 rounded-xl ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}><Edit className="w-4 h-4" /></button>
+                <button onClick={() => setShowDetailDrawer(false)} className={`p-2 rounded-xl ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}><X className="w-5 h-5" /></button>
+              </div>
+            </div>
+            <div className="p-4 sm:p-5 space-y-5">
+              <div className={`p-4 rounded-xl ${dark ? 'bg-neutral-900/50 border border-neutral-800/60' : 'bg-gray-50 border border-gray-200'}`}>
+                <h3 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>Customer</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2"><User className={`w-4 h-4 ${dark ? 'text-neutral-500' : 'text-gray-400'}`} /><span className={`text-sm font-medium ${dark ? 'text-white' : 'text-gray-900'}`}>{selectedInvoice.customerName}</span></div>
+                  {selectedInvoice.customerPhone !== '-' && <div className="flex items-center gap-2"><Phone className={`w-4 h-4 ${dark ? 'text-neutral-500' : 'text-gray-400'}`} /><span className={`text-sm ${dark ? 'text-neutral-300' : 'text-gray-700'}`}>{selectedInvoice.customerPhone}</span></div>}
+                  {selectedInvoice.customerEmail && <div className="flex items-center gap-2"><Mail className={`w-4 h-4 ${dark ? 'text-neutral-500' : 'text-gray-400'}`} /><span className={`text-sm ${dark ? 'text-neutral-300' : 'text-gray-700'}`}>{selectedInvoice.customerEmail}</span></div>}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className={`p-3 rounded-xl ${dark ? 'bg-neutral-900/50 border border-neutral-800/60' : 'bg-gray-50 border border-gray-200'}`}>
+                  <p className={`text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>Created</p>
+                  <p className={`text-sm font-medium ${dark ? 'text-white' : 'text-gray-900'}`}>{new Date(selectedInvoice.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                </div>
+                <div className={`p-3 rounded-xl ${dark ? 'bg-neutral-900/50 border border-neutral-800/60' : 'bg-gray-50 border border-gray-200'}`}>
+                  <p className={`text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>Due Date</p>
+                  <p className={`text-sm font-medium ${isOverdue(selectedInvoice) ? 'text-red-400' : dark ? 'text-white' : 'text-gray-900'}`}>{fmtDate(selectedInvoice.dueDate)}</p>
+                </div>
+              </div>
+              <div>
+                <h3 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>Items ({selectedInvoice.items.length})</h3>
+                <div className={`rounded-xl border overflow-hidden ${dark ? 'border-neutral-800/60' : 'border-gray-200'}`}>
+                  {selectedInvoice.items.map((item, idx) => (
+                    <div key={idx} className={`p-3 ${idx > 0 ? `border-t ${dark ? 'border-neutral-800/50' : 'border-gray-100'}` : ''}`}>
+                      <div className="flex items-start justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-medium ${dark ? 'text-white' : 'text-gray-900'}`}>{item.productName}</p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${dark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}>{item.sku}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${dark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}>{item.size}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${dark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}>{item.color}</span>
+                            {item.barcode && <span className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 ${dark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}><Barcode className="w-2.5 h-2.5" />{item.barcode}</span>}
+                          </div>
+                        </div>
+                        <div className="text-right ml-2 flex-shrink-0">
+                          <p className={`text-sm font-medium ${dark ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(item.total)}</p>
+                          <p className={`text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>x{item.quantity} @ {formatCurrency(item.unitPrice)}</p>
+                          {item.discount > 0 && <p className="text-[10px] text-red-400">-{formatCurrency(item.discount)} disc</p>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className={`p-4 rounded-xl ${dark ? 'bg-neutral-900/50 border border-neutral-800/60' : 'bg-gray-50 border border-gray-200'}`}>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm"><span className={dark ? 'text-neutral-400' : 'text-gray-500'}>Subtotal</span><span className={dark ? 'text-neutral-300' : 'text-gray-700'}>{formatCurrency(selectedInvoice.subtotal)}</span></div>
+                  {selectedInvoice.discount > 0 && <div className="flex justify-between text-sm"><span className="text-red-400">Discount</span><span className="text-red-400">-{formatCurrency(selectedInvoice.discount)}</span></div>}
+                  <div className={`flex justify-between text-base font-bold pt-2 border-t ${dark ? 'border-neutral-700 text-white' : 'border-gray-200 text-gray-900'}`}><span>Total</span><span>{formatCurrency(selectedInvoice.total)}</span></div>
+                  {selectedInvoice.status !== 'paid' && (<><div className="flex justify-between text-sm text-green-500"><span>Paid</span><span>{formatCurrency(selectedInvoice.paidAmount)}</span></div><div className="flex justify-between text-sm font-semibold text-amber-500"><span>Balance Due</span><span>{formatCurrency(selectedInvoice.total - selectedInvoice.paidAmount)}</span></div></>)}
+                </div>
+              </div>
+              {selectedInvoice.payments.length > 0 && (
+                <div>
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>Payment History</h3>
+                  <div className="space-y-2">
+                    {selectedInvoice.payments.map((pay, idx) => (
+                      <div key={idx} className={`flex items-center justify-between p-3 rounded-xl ${dark ? 'bg-neutral-900/50 border border-neutral-800/60' : 'bg-gray-50 border border-gray-200'}`}>
+                        <div className="flex items-center gap-2"><CreditCard className={`w-4 h-4 ${dark ? 'text-neutral-500' : 'text-gray-400'}`} /><div><p className={`text-xs font-medium capitalize ${dark ? 'text-white' : 'text-gray-900'}`}>{pay.paymentMethod.replace('-', ' ')}</p><p className={`text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{fmtDate(pay.paymentDate)}</p></div></div>
+                        <span className="text-sm font-semibold text-green-500">{formatCurrency(pay.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selectedInvoice.notes && (<div className={`p-3 rounded-xl ${dark ? 'bg-amber-500/5 border border-amber-500/20' : 'bg-amber-50 border border-amber-200'}`}><p className={`text-xs font-medium ${dark ? 'text-amber-400' : 'text-amber-700'}`}>Notes</p><p className={`text-sm mt-1 ${dark ? 'text-neutral-300' : 'text-gray-700'}`}>{selectedInvoice.notes}</p></div>)}
+              <div className="flex gap-2">
+                <button onClick={() => { openEditModal(selectedInvoice); setShowDetailDrawer(false); }} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}><Edit className="w-4 h-4" /> Edit</button>
+                <button onClick={() => { setShowDeleteModal(true); setShowDetailDrawer(false); }} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20"><Trash2 className="w-4 h-4" /> Delete</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && selectedInvoice && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowEditModal(false)} />
+          <div className={`relative w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] flex flex-col rounded-t-3xl sm:rounded-2xl overflow-hidden ${dark ? 'bg-neutral-950 border border-neutral-800' : 'bg-gray-50 border border-gray-200'}`}>
+            <div className={`flex items-center justify-between px-4 sm:px-5 py-4 border-b ${dark ? 'border-neutral-800' : 'border-gray-200'}`}>
+              <div><h2 className={`text-lg font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>Edit Invoice</h2><p className={`text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{selectedInvoice.invoiceNumber}</p></div>
+              <button onClick={() => setShowEditModal(false)} className={`p-2 rounded-xl ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-200 text-gray-500'}`}><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-4">
+              <div className={`p-4 rounded-xl border ${dark ? 'bg-neutral-900/50 border-neutral-800/60' : 'bg-white border-gray-200'}`}>
+                <h3 className={`text-sm font-semibold mb-3 ${dark ? 'text-white' : 'text-gray-900'}`}>Customer</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div><label className={`block text-xs font-medium mb-1 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Name</label><input value={editCustomerName} onChange={e => setEditCustomerName(e.target.value)} className={`w-full px-3 py-2 rounded-xl border text-sm ${dark ? 'bg-neutral-800/50 border-neutral-700/50 text-white' : 'bg-white border-gray-200 text-gray-900'}`} /></div>
+                  <div><label className={`block text-xs font-medium mb-1 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Phone</label><input value={editCustomerPhone} onChange={e => setEditCustomerPhone(e.target.value)} className={`w-full px-3 py-2 rounded-xl border text-sm ${dark ? 'bg-neutral-800/50 border-neutral-700/50 text-white' : 'bg-white border-gray-200 text-gray-900'}`} /></div>
+                </div>
+              </div>
+              <div className={`rounded-xl border overflow-hidden ${dark ? 'border-neutral-800/60' : 'border-gray-200'}`}>
+                <div className={`px-4 py-3 ${dark ? 'bg-neutral-800/30' : 'bg-gray-50'}`}><h3 className={`text-sm font-semibold ${dark ? 'text-white' : 'text-gray-900'}`}>Items ({editItems.length})</h3></div>
+                <div className={`divide-y ${dark ? 'divide-neutral-800/50' : 'divide-gray-100'}`}>
+                  {editItems.map((item, idx) => (
+                    <div key={idx} className="p-3 flex items-center gap-3">
+                      <div className="min-w-0 flex-1"><p className={`text-sm font-medium truncate ${dark ? 'text-white' : 'text-gray-900'}`}>{item.productName}</p><p className={`text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{item.sku} &middot; {item.size} &middot; {item.color}</p></div>
+                      <div className={`flex items-center rounded-lg border ${dark ? 'border-neutral-700' : 'border-gray-200'}`}>
+                        <button onClick={() => updateEditItemQty(idx, item.quantity - 1)} className={`px-2 py-1 text-sm ${dark ? 'text-neutral-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'} rounded-l-lg`}>-</button>
+                        <span className={`px-2 py-1 text-sm font-medium ${dark ? 'text-white' : 'text-gray-900'}`}>{item.quantity}</span>
+                        <button onClick={() => updateEditItemQty(idx, item.quantity + 1)} className={`px-2 py-1 text-sm ${dark ? 'text-neutral-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'} rounded-r-lg`}>+</button>
+                      </div>
+                      <span className={`text-sm font-medium w-20 text-right ${dark ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(item.total)}</span>
+                      <button onClick={() => removeEditItem(idx)} className="p-1 text-red-400 hover:bg-red-500/10 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
+                  ))}
+                </div>
+                <div className={`px-4 py-3 flex justify-between text-sm font-bold ${dark ? 'bg-neutral-800/30 text-white' : 'bg-gray-50 text-gray-900'}`}><span>Total</span><span>{formatCurrency(editItems.reduce((s, i) => s + i.total, 0))}</span></div>
+              </div>
+              <div className={`p-4 rounded-xl border ${dark ? 'bg-neutral-900/50 border-neutral-800/60' : 'bg-white border-gray-200'}`}>
+                <h3 className={`text-sm font-semibold mb-3 ${dark ? 'text-white' : 'text-gray-900'}`}>Payment</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                  {([['cash', 'Cash'], ['card', 'Card'], ['bank-transfer', 'Bank'], ['credit', 'Credit']] as const).map(([val, lbl]) => (
+                    <button key={val} onClick={() => setEditPaymentMethod(val)} className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all ${editPaymentMethod === val ? dark ? 'bg-white text-black border-white' : 'bg-brand-900 text-white border-brand-900' : dark ? 'border-neutral-700 text-neutral-400 hover:border-neutral-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>{lbl}</button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div><label className={`block text-xs font-medium mb-1 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Paid Amount</label><input type="number" value={editPaidAmount} onChange={e => setEditPaidAmount(e.target.value)} className={`w-full px-3 py-2 rounded-xl border text-sm ${dark ? 'bg-neutral-800/50 border-neutral-700/50 text-white' : 'bg-white border-gray-200 text-gray-900'}`} /></div>
+                  <div className="relative">
+                    <label className={`block text-xs font-medium mb-1 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Due Date</label>
+                    <button onClick={() => setShowEditDueCal(!showEditDueCal)} className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-sm text-left ${dark ? 'bg-neutral-800/50 border-neutral-700/50 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
+                      <Calendar className="w-4 h-4 flex-shrink-0" />{editDueDate ? fmtDate(editDueDate) : 'Select date'}
+                    </button>
+                    {showEditDueCal && <div className="absolute top-full left-0 mt-1 z-50"><InlineCalendar dark={dark} value={editDueDate} onChange={(d) => { setEditDueDate(d); setShowEditDueCal(false); }} onClose={() => setShowEditDueCal(false)} /></div>}
+                  </div>
+                  <div><label className={`block text-xs font-medium mb-1 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Status</label><select value={editStatus} onChange={e => setEditStatus(e.target.value as Invoice['status'])} className={`w-full px-3 py-2 rounded-xl border text-sm ${dark ? 'bg-neutral-800/50 border-neutral-700/50 text-white' : 'bg-white border-gray-200 text-gray-900'}`}><option value="paid">Paid</option><option value="partial">Partial</option><option value="pending">Pending</option><option value="cancelled">Cancelled</option></select></div>
+                </div>
+                <div className="mt-3"><label className={`block text-xs font-medium mb-1 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Notes</label><textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2} className={`w-full px-3 py-2 rounded-xl border text-sm ${dark ? 'bg-neutral-800/50 border-neutral-700/50 text-white' : 'bg-white border-gray-200 text-gray-900'}`} /></div>
+              </div>
+            </div>
+            <div className={`flex items-center justify-between px-4 sm:px-5 py-4 border-t ${dark ? 'border-neutral-800' : 'border-gray-200'}`}>
+              <button onClick={() => setShowEditModal(false)} className={`px-4 py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Cancel</button>
+              <button onClick={handleSaveEdit} className={`px-6 py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-brand-900 text-white hover:bg-brand-800'}`}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <DeleteConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDeleteInvoice} title="Delete Invoice" itemName={selectedInvoice?.invoiceNumber} />
+    </div>
+  );
+};
