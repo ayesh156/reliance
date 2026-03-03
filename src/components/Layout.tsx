@@ -7,6 +7,7 @@ import {
   FolderOpen,
   FileText,
   Truck,
+  Users,
   BarChart3,
   Settings,
   Menu,
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
   { label: 'Products', path: '/products', icon: ShoppingBag },
   { label: 'Categories', path: '/categories', icon: FolderOpen },
   { label: 'Invoices', path: '/invoices', icon: FileText },
+  { label: 'Customers', path: '/customers', icon: Users },
   { label: 'Suppliers', path: '/suppliers', icon: Truck },
   { label: 'Reports', path: '/reports', icon: BarChart3 },
   { label: 'Settings', path: '/settings', icon: Settings },
@@ -48,7 +50,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   });
 
   return (
-    <div className={`min-h-screen flex ${theme === 'dark' ? 'bg-brand-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`min-h-screen flex overflow-x-hidden ${theme === 'dark' ? 'bg-brand-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
       {/* Desktop Sidebar */}
       <aside className={`hidden lg:flex flex-col fixed inset-y-0 left-0 z-40 transition-all duration-300 ${
         collapsed ? 'w-20' : 'w-64'
@@ -57,8 +59,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div className={`flex items-center h-16 px-4 ${collapsed ? 'justify-center' : 'gap-3'} ${
           theme === 'dark' ? 'border-b border-neutral-800/60' : 'border-b border-gray-200'
         }`}>
-          <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-black font-bold text-sm tracking-wider">R</span>
+          <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <img src="/images/logo.jpg" alt="Reliance" className="w-full h-full object-cover" />
           </div>
           {!collapsed && (
             <div>
@@ -120,8 +122,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               theme === 'dark' ? 'border-b border-neutral-800/60' : 'border-b border-gray-200'
             }`}>
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center">
-                  <span className="text-black font-bold text-sm tracking-wider">R</span>
+                <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center overflow-hidden">
+                  <img src="/images/logo.jpg" alt="Reliance" className="w-full h-full object-cover" />
                 </div>
                 <h1 className="font-display text-lg font-bold tracking-[0.2em] uppercase">RELIANCE</h1>
               </div>
@@ -170,7 +172,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       )}
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+      <div className={`flex-1 flex flex-col min-h-screen min-w-0 transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
         {/* Header */}
         <header className={`sticky top-0 z-30 h-16 flex items-center justify-between px-4 lg:px-6 backdrop-blur-xl ${
           theme === 'dark'
@@ -241,7 +243,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+        <main className="flex-1 p-4 lg:p-6 overflow-x-hidden overflow-y-auto">
           {children}
         </main>
       </div>

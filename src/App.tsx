@@ -11,6 +11,7 @@ import { Categories } from './pages/Categories';
 import { Invoices } from './pages/Invoices';
 import { CreateInvoice } from './pages/CreateInvoice';
 import { Suppliers } from './pages/Suppliers';
+import { Customers } from './pages/Customers';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 
@@ -44,6 +45,7 @@ function App() {
             <Route path="/invoices" element={<Invoices />} />
             <Route path="/invoices/create" element={<CreateInvoice />} />
             <Route path="/suppliers" element={<Suppliers />} />
+            <Route path="/customers" element={<Customers />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>

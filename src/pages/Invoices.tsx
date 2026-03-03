@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatCurrency } from '../lib/utils';
-import { mockInvoices as initialInvoices, type Invoice, type InvoiceItem } from '../data/mockData';
+import { mockInvoices as initialInvoices, mockCustomers, type Invoice, type InvoiceItem, type InvoiceReminder, type Customer } from '../data/mockData';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -11,8 +11,10 @@ import {
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   Clock, X, Barcode, Package,
   CreditCard, Phone, Mail, Filter, Calendar,
+  Printer, MessageCircle, History, Send,
 } from 'lucide-react';
 import { DeleteConfirmationModal } from '../components/modals/DeleteConfirmationModal';
+import { ThermalReceipt } from '../components/ThermalReceipt';
 
 type ViewMode = 'grid' | 'table';
 
@@ -110,6 +112,12 @@ export const Invoices: React.FC = () => {
   const [showDetailDrawer, setShowDetailDrawer] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
+  // Print & Reminder state
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
+  const [showReminderHistory, setShowReminderHistory] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
+
   // Edit form state
   const [editCustomerName, setEditCustomerName] = useState('');
   const [editCustomerPhone, setEditCustomerPhone] = useState('');
@@ -120,6 +128,10 @@ export const Invoices: React.FC = () => {
   const [editNotes, setEditNotes] = useState('');
   const [editItems, setEditItems] = useState<InvoiceItem[]>([]);
   const [showEditDueCal, setShowEditDueCal] = useState(false);
+  const [editCustomerSearch, setEditCustomerSearch] = useState('');
+  const [showEditCustomerDropdown, setShowEditCustomerDropdown] = useState(false);
+  const [editSelectedCustomer, setEditSelectedCustomer] = useState<Customer | null>(null);
+  const editCustomerDropdownRef = useRef<HTMLDivElement>(null);
 
   // Items per page options
   const gridPerPageOptions = [6, 9, 12, 18];
@@ -139,6 +151,35 @@ export const Invoices: React.FC = () => {
   }, []);
 
   const activeFilterCount = [dateFrom, dateTo, priceMin, priceMax].filter(Boolean).length + (statusFilter !== 'all' ? 1 : 0);
+
+  // Filtered customers for edit modal search
+  const filteredEditCustomers = useMemo(() => {
+    const active = mockCustomers.filter(c => c.status === 'active');
+    if (!editCustomerSearch.trim()) return active;
+    const q = editCustomerSearch.toLowerCase();
+    return active.filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q) || c.email.toLowerCase().includes(q) || (c.nic && c.nic.includes(q)));
+  }, [editCustomerSearch]);
+
+  // Click outside to close edit customer dropdown
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (showEditCustomerDropdown && editCustomerDropdownRef.current && !editCustomerDropdownRef.current.contains(e.target as Node)) {
+        setShowEditCustomerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showEditCustomerDropdown]);
+
+  const selectEditCustomer = (customer: Customer | null) => {
+    setEditSelectedCustomer(customer);
+    if (customer) {
+      setEditCustomerName(customer.name);
+      setEditCustomerPhone(customer.phone);
+      setEditCustomerSearch('');
+    }
+    setShowEditCustomerDropdown(false);
+  };
 
   // Filter
   const filteredInvoices = useMemo(() => {
@@ -190,6 +231,10 @@ export const Invoices: React.FC = () => {
     setEditNotes(invoice.notes || '');
     setEditItems([...invoice.items]);
     setShowEditModal(true);
+    // Check if the invoice customer matches a registered customer
+    const match = mockCustomers.find(c => c.name === invoice.customerName && c.phone === invoice.customerPhone);
+    setEditSelectedCustomer(match || null);
+    setEditCustomerSearch('');
   };
 
   const handleSaveEdit = () => {
@@ -253,6 +298,77 @@ export const Invoices: React.FC = () => {
     setEditItems(prev => prev.map((item, i) => i === idx ? { ...item, quantity: qty, total: qty * item.unitPrice - item.discount * qty } : item));
   };
   const removeEditItem = (idx: number) => setEditItems(prev => prev.filter((_, i) => i !== idx));
+
+  // ─── Print helpers ───
+  const openPrintPreview = (inv: Invoice) => {
+    setPrintInvoice(inv);
+    setShowPrintPreview(true);
+  };
+
+  const handlePrint = () => {
+    if (!receiptRef.current) return;
+    const printWindow = window.open('', '_blank', 'width=350,height=700');
+    if (!printWindow) { toast.error('Popup blocked. Please allow popups.'); return; }
+    const content = receiptRef.current.innerHTML;
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Print Invoice</title><style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: white; }
+    </style></head><body>${content}</body></html>`);
+    printWindow.document.close();
+    setTimeout(() => { printWindow.focus(); printWindow.print(); printWindow.close(); }, 400);
+  };
+
+  // ─── WhatsApp Reminder helpers ───
+  const formatPhoneForWhatsApp = (phone: string): string => {
+    let cleaned = phone.replace(/[^0-9]/g, '');
+    if (cleaned.startsWith('0')) cleaned = '94' + cleaned.substring(1);
+    else if (!cleaned.startsWith('94')) cleaned = '94' + cleaned;
+    return cleaned;
+  };
+
+  const sendWhatsAppReminder = (inv: Invoice, type: 'payment' | 'overdue') => {
+    const balanceDue = inv.total - inv.paidAmount;
+    if (balanceDue <= 0) { toast.error('No outstanding balance'); return; }
+    if (!inv.customerPhone || inv.customerPhone === '-') { toast.error('No customer phone number'); return; }
+
+    const message = type === 'overdue'
+      ? `Dear ${inv.customerName},\n\n⚠️ OVERDUE PAYMENT REMINDER\n\nYour invoice *${inv.invoiceNumber}* has an outstanding balance of *${formatCurrency(balanceDue)}* which is now overdue.\n\nPlease settle this amount at your earliest convenience.\n\nThank you,\n*Reliance Clothing*\nMakandura, Matara\n071 135 0123`
+      : `Dear ${inv.customerName},\n\n💰 PAYMENT REMINDER\n\nThis is a friendly reminder regarding your invoice *${inv.invoiceNumber}* with an outstanding balance of *${formatCurrency(balanceDue)}*.\n\nDue Date: ${fmtDate(inv.dueDate)}\nTotal: ${formatCurrency(inv.total)}\nPaid: ${formatCurrency(inv.paidAmount)}\nBalance: ${formatCurrency(balanceDue)}\n\nPlease arrange payment at your convenience.\n\nThank you,\n*Reliance Clothing*\nMakandura, Matara\n071 135 0123`;
+
+    const newReminder: InvoiceReminder = {
+      id: `ir-${Date.now()}`,
+      invoiceId: inv.id,
+      type,
+      channel: 'whatsapp',
+      sentAt: new Date().toISOString(),
+      message,
+      customerPhone: inv.customerPhone,
+      customerName: inv.customerName,
+    };
+
+    setInvoices(prev => prev.map(i => i.id === inv.id ? {
+      ...i,
+      reminders: [...(i.reminders || []), newReminder],
+      reminderCount: (i.reminderCount || 0) + 1,
+    } : i));
+
+    // Update selectedInvoice if open
+    if (selectedInvoice?.id === inv.id) {
+      setSelectedInvoice(prev => prev ? {
+        ...prev,
+        reminders: [...(prev.reminders || []), newReminder],
+        reminderCount: (prev.reminderCount || 0) + 1,
+      } : prev);
+    }
+
+    const phone = formatPhoneForWhatsApp(inv.customerPhone);
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+
+    const count = (inv.reminderCount || 0) + 1;
+    toast.success(`Reminder #${count} sent via WhatsApp`, {
+      description: `${type === 'overdue' ? '⚠️ Overdue' : '💰 Payment'} reminder to ${inv.customerName}`,
+    });
+  };
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
@@ -427,7 +543,29 @@ export const Invoices: React.FC = () => {
                 <div className={`flex items-center gap-1.5 mt-2 text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>
                   <Package className="w-3 h-3" /><span>{inv.items.length} item{inv.items.length > 1 ? 's' : ''} &middot; {inv.items.reduce((s, i) => s + i.quantity, 0)} units</span>
                 </div>
-                <div className={`flex gap-1.5 mt-3 pt-3 border-t ${dark ? 'border-neutral-800' : 'border-gray-100'}`}>
+                {/* Print & Reminder row */}
+                <div className={`flex items-center gap-1.5 mt-2`}>
+                  <button onClick={() => openPrintPreview(inv)} className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-medium transition-all ${dark ? 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700/50' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>
+                    <Printer className="w-3 h-3" /> Print
+                  </button>
+                  {inv.status !== 'paid' && inv.status !== 'cancelled' && inv.customerPhone && inv.customerPhone !== '-' && (
+                    <div className="relative flex-1">
+                      <button onClick={() => sendWhatsAppReminder(inv, isOverdue(inv) ? 'overdue' : 'payment')} className={`w-full flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-medium transition-all ${dark ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                        <MessageCircle className="w-3 h-3" /> Remind
+                      </button>
+                      {(inv.reminderCount || 0) > 0 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedInvoice(inv); setShowReminderHistory(true); }}
+                          className="absolute -top-2 -right-2 bg-green-600 hover:bg-green-500 text-white text-[8px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-colors z-10"
+                          title={`${inv.reminderCount} reminders sent — click to view history`}
+                        >
+                          {inv.reminderCount}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className={`flex gap-1.5 mt-2 pt-3 border-t ${dark ? 'border-neutral-800' : 'border-gray-100'}`}>
                   <button onClick={() => openDetailDrawer(inv)} className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium transition-all ${dark ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}><Eye className="w-3.5 h-3.5" /> View</button>
                   <button onClick={() => openEditModal(inv)} className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium transition-all ${dark ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}><Edit className="w-3.5 h-3.5" /> Edit</button>
                   <button onClick={() => { setSelectedInvoice(inv); setShowDeleteModal(true); }} className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium transition-all ${dark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}><Trash2 className="w-3.5 h-3.5" /> Delete</button>
@@ -463,6 +601,23 @@ export const Invoices: React.FC = () => {
                         <div className="flex items-center gap-1">
                           <button onClick={() => openDetailDrawer(inv)} className={`p-1.5 rounded-lg transition-colors ${dark ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-100 text-gray-400'}`}><Eye className="w-4 h-4" /></button>
                           <button onClick={() => openEditModal(inv)} className={`p-1.5 rounded-lg transition-colors ${dark ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-100 text-gray-400'}`}><Edit className="w-4 h-4" /></button>
+                          <button onClick={() => openPrintPreview(inv)} className={`p-1.5 rounded-lg transition-colors ${dark ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-100 text-gray-400'}`} title="Print"><Printer className="w-4 h-4" /></button>
+                          {inv.status !== 'paid' && inv.status !== 'cancelled' && inv.customerPhone && inv.customerPhone !== '-' && (
+                            <>
+                              <button onClick={() => sendWhatsAppReminder(inv, isOverdue(inv) ? 'overdue' : 'payment')} className={`p-1.5 rounded-lg transition-colors ${dark ? 'hover:bg-green-500/10 text-green-400' : 'hover:bg-green-50 text-green-500'}`} title="WhatsApp Reminder">
+                                <MessageCircle className="w-4 h-4" />
+                              </button>
+                              {(inv.reminderCount || 0) > 0 && (
+                                <button
+                                  onClick={() => { setSelectedInvoice(inv); setShowReminderHistory(true); }}
+                                  className="bg-green-600 hover:bg-green-500 text-white text-[8px] font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center cursor-pointer transition-colors"
+                                  title={`${inv.reminderCount} reminders sent — click to view history`}
+                                >
+                                  {inv.reminderCount}
+                                </button>
+                              )}
+                            </>
+                          )}
                           <button onClick={() => { setSelectedInvoice(inv); setShowDeleteModal(true); }} className={`p-1.5 rounded-lg transition-colors ${dark ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-red-50 text-red-400'}`}><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </td>
@@ -489,6 +644,7 @@ export const Invoices: React.FC = () => {
                 <div className={`flex gap-1 pt-2 border-t ${dark ? 'border-neutral-800' : 'border-gray-100'}`}>
                   <button onClick={() => openDetailDrawer(inv)} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${dark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>View</button>
                   <button onClick={() => openEditModal(inv)} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${dark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>Edit</button>
+                  <button onClick={() => openPrintPreview(inv)} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${dark ? 'bg-neutral-800/50 text-neutral-400' : 'bg-gray-50 text-gray-500'}`}>Print</button>
                   <button onClick={() => { setSelectedInvoice(inv); setShowDeleteModal(true); }} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${dark ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600'}`}>Delete</button>
                 </div>
               </div>
@@ -607,7 +763,33 @@ export const Invoices: React.FC = () => {
                 </div>
               )}
               {selectedInvoice.notes && (<div className={`p-3 rounded-xl ${dark ? 'bg-amber-500/5 border border-amber-500/20' : 'bg-amber-50 border border-amber-200'}`}><p className={`text-xs font-medium ${dark ? 'text-amber-400' : 'text-amber-700'}`}>Notes</p><p className={`text-sm mt-1 ${dark ? 'text-neutral-300' : 'text-gray-700'}`}>{selectedInvoice.notes}</p></div>)}
+
+              {/* Reminder section */}
+              {selectedInvoice.status !== 'paid' && selectedInvoice.status !== 'cancelled' && selectedInvoice.customerPhone && selectedInvoice.customerPhone !== '-' && (
+                <div className={`p-4 rounded-xl border ${dark ? 'bg-neutral-900/50 border-neutral-800/60' : 'bg-gray-50 border border-gray-200'}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className={`text-xs font-semibold uppercase tracking-wider ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>WhatsApp Reminders</h3>
+                    {(selectedInvoice.reminderCount || 0) > 0 && (
+                      <button onClick={() => setShowReminderHistory(true)} className={`flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-lg transition-all ${dark ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                        <History className="w-3 h-3" /> {selectedInvoice.reminderCount} sent
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => sendWhatsAppReminder(selectedInvoice, 'payment')} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all ${dark ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20' : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'}`}>
+                      <Send className="w-3.5 h-3.5" /> Payment Reminder
+                    </button>
+                    {isOverdue(selectedInvoice) && (
+                      <button onClick={() => sendWhatsAppReminder(selectedInvoice, 'overdue')} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all ${dark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'}`}>
+                        <Send className="w-3.5 h-3.5" /> Overdue Reminder
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-2">
+                <button onClick={() => openPrintPreview(selectedInvoice)} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}><Printer className="w-4 h-4" /> Print</button>
                 <button onClick={() => { openEditModal(selectedInvoice); setShowDetailDrawer(false); }} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}><Edit className="w-4 h-4" /> Edit</button>
                 <button onClick={() => { setShowDeleteModal(true); setShowDetailDrawer(false); }} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20"><Trash2 className="w-4 h-4" /> Delete</button>
               </div>
@@ -628,6 +810,75 @@ export const Invoices: React.FC = () => {
             <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-4">
               <div className={`p-4 rounded-xl border ${dark ? 'bg-neutral-900/50 border-neutral-800/60' : 'bg-white border-gray-200'}`}>
                 <h3 className={`text-sm font-semibold mb-3 ${dark ? 'text-white' : 'text-gray-900'}`}>Customer</h3>
+
+                {/* Customer Search / Select */}
+                <div className="mb-3" ref={editCustomerDropdownRef}>
+                  <label className={`block text-xs font-medium mb-1 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Search or Select Customer</label>
+                  <div className="relative">
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${dark ? 'bg-neutral-800/50 border-neutral-700/50 focus-within:border-white/30' : 'bg-white border-gray-200 focus-within:border-gray-400'}`}>
+                      <Search className={`w-4 h-4 flex-shrink-0 ${dark ? 'text-neutral-500' : 'text-gray-400'}`} />
+                      <input
+                        value={editSelectedCustomer ? editSelectedCustomer.name : editCustomerSearch}
+                        onChange={e => {
+                          if (editSelectedCustomer) {
+                            setEditSelectedCustomer(null);
+                          }
+                          setEditCustomerSearch(e.target.value);
+                          setShowEditCustomerDropdown(true);
+                        }}
+                        onFocus={() => setShowEditCustomerDropdown(true)}
+                        placeholder="Search by name, phone, NIC..."
+                        className={`bg-transparent border-none outline-none flex-1 text-sm ${dark ? 'text-white placeholder-neutral-500' : 'text-gray-900 placeholder-gray-400'}`}
+                      />
+                      {(editSelectedCustomer || editCustomerSearch) && (
+                        <button onClick={() => { selectEditCustomer(null); setEditCustomerSearch(''); setEditCustomerName('Walk-in Customer'); setEditCustomerPhone(''); }} className={`p-0.5 rounded ${dark ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-200 text-gray-400'}`}><X className="w-3.5 h-3.5" /></button>
+                      )}
+                    </div>
+
+                    {/* Selected customer badge */}
+                    {editSelectedCustomer && (
+                      <div className={`mt-2 flex items-center gap-2 px-3 py-1.5 rounded-xl ${dark ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-200'}`}>
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${dark ? 'bg-neutral-800 text-white' : 'bg-gray-200 text-gray-700'}`}>{editSelectedCustomer.name.charAt(0)}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-semibold ${dark ? 'text-green-400' : 'text-green-700'}`}>{editSelectedCustomer.name}</p>
+                          <p className={`text-[10px] ${dark ? 'text-green-500/60' : 'text-green-600/60'}`}>{editSelectedCustomer.customerType} · {editSelectedCustomer.phone}</p>
+                        </div>
+                        <button onClick={() => { selectEditCustomer(null); setEditCustomerSearch(''); setEditCustomerName('Walk-in Customer'); setEditCustomerPhone(''); }} className={`p-1 rounded-lg ${dark ? 'hover:bg-green-500/20 text-green-400' : 'hover:bg-green-100 text-green-600'}`}><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    )}
+
+                    {/* Customer dropdown */}
+                    {showEditCustomerDropdown && !editSelectedCustomer && (
+                      <div className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl overflow-hidden z-50 max-h-48 overflow-y-auto ${dark ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
+                        <button onClick={() => { setEditCustomerName('Walk-in Customer'); setEditCustomerPhone(''); setEditSelectedCustomer(null); setEditCustomerSearch(''); setShowEditCustomerDropdown(false); }}
+                          className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${dark ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'}`}>
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${dark ? 'bg-neutral-800' : 'bg-gray-100'}`}><User className={`w-3.5 h-3.5 ${dark ? 'text-neutral-400' : 'text-gray-500'}`} /></div>
+                          <div><p className={`text-sm font-medium ${dark ? 'text-white' : 'text-gray-900'}`}>Walk-in Customer</p><p className={`text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>No customer record</p></div>
+                        </button>
+                        {filteredEditCustomers.length > 0 && (
+                          <div className={`border-t ${dark ? 'border-neutral-800' : 'border-gray-100'}`}>
+                            <p className={`px-3 py-1 text-[10px] uppercase font-semibold tracking-wider ${dark ? 'text-neutral-600' : 'text-gray-400'}`}>Registered Customers</p>
+                            {filteredEditCustomers.slice(0, 8).map(c => (
+                              <button key={c.id} onClick={() => selectEditCustomer(c)}
+                                className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${dark ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'}`}>
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${dark ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-700'}`}>{c.name.charAt(0)}</div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-sm font-medium truncate ${dark ? 'text-white' : 'text-gray-900'}`}>{c.name}</p>
+                                  <p className={`text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{c.phone} · {c.customerType}</p>
+                                </div>
+                                {c.outstandingBalance > 0 && <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${dark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>{formatCurrency(c.outstandingBalance)} due</span>}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {filteredEditCustomers.length === 0 && editCustomerSearch.trim() && (
+                          <div className={`px-3 py-3 text-center text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>No customers found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><label className={`block text-xs font-medium mb-1 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Name</label><input value={editCustomerName} onChange={e => setEditCustomerName(e.target.value)} className={`w-full px-3 py-2 rounded-xl border text-sm ${dark ? 'bg-neutral-800/50 border-neutral-700/50 text-white' : 'bg-white border-gray-200 text-gray-900'}`} /></div>
                   <div><label className={`block text-xs font-medium mb-1 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Phone</label><input value={editCustomerPhone} onChange={e => setEditCustomerPhone(e.target.value)} className={`w-full px-3 py-2 rounded-xl border text-sm ${dark ? 'bg-neutral-800/50 border-neutral-700/50 text-white' : 'bg-white border-gray-200 text-gray-900'}`} /></div>
@@ -674,13 +925,91 @@ export const Invoices: React.FC = () => {
             </div>
             <div className={`flex items-center justify-between px-4 sm:px-5 py-4 border-t ${dark ? 'border-neutral-800' : 'border-gray-200'}`}>
               <button onClick={() => setShowEditModal(false)} className={`px-4 py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Cancel</button>
-              <button onClick={handleSaveEdit} className={`px-6 py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-brand-900 text-white hover:bg-brand-800'}`}>Save Changes</button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { if (selectedInvoice) openPrintPreview(selectedInvoice); }} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}><Printer className="w-4 h-4" /> Print</button>
+                <button onClick={handleSaveEdit} className={`px-6 py-2.5 rounded-xl text-sm font-medium ${dark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-brand-900 text-white hover:bg-brand-800'}`}>Save Changes</button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       <DeleteConfirmationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleDeleteInvoice} title="Delete Invoice" itemName={selectedInvoice?.invoiceNumber} />
+
+      {/* ─── PRINT PREVIEW MODAL ─── */}
+      {showPrintPreview && printInvoice && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowPrintPreview(false)} />
+          <div className={`relative w-full max-w-md max-h-[95vh] flex flex-col rounded-2xl overflow-hidden ${dark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200 shadow-2xl'}`}>
+            {/* Header */}
+            <div className={`flex items-center justify-between px-4 py-3 border-b ${dark ? 'border-neutral-800' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-2">
+                <Printer className={`w-5 h-5 ${dark ? 'text-neutral-400' : 'text-gray-500'}`} />
+                <h2 className={`text-lg font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>Print Preview</h2>
+              </div>
+              <button onClick={() => setShowPrintPreview(false)} className={`p-2 rounded-xl ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}><X className="w-5 h-5" /></button>
+            </div>
+            {/* Receipt preview */}
+            <div className="flex-1 overflow-y-auto p-4" style={{ background: '#f5f5f5' }}>
+              <div className="shadow-xl rounded-lg overflow-hidden mx-auto" style={{ maxWidth: '320px' }}>
+                <ThermalReceipt ref={receiptRef} invoice={printInvoice} />
+              </div>
+            </div>
+            {/* Footer */}
+            <div className={`flex items-center justify-between px-4 py-3 border-t ${dark ? 'border-neutral-800' : 'border-gray-200'}`}>
+              <p className={`text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>80mm Thermal Receipt</p>
+              <button onClick={handlePrint} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${dark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-brand-900 text-white hover:bg-brand-800'}`}>
+                <Printer className="w-4 h-4" /> Print Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── REMINDER HISTORY MODAL ─── */}
+      {showReminderHistory && selectedInvoice && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowReminderHistory(false)} />
+          <div className={`relative w-full max-w-lg max-h-[80vh] flex flex-col rounded-2xl overflow-hidden ${dark ? 'bg-neutral-950 border border-neutral-800' : 'bg-white border border-gray-200 shadow-2xl'}`}>
+            <div className={`flex items-center justify-between px-4 py-3 border-b ${dark ? 'border-neutral-800' : 'border-gray-200'}`}>
+              <div>
+                <h2 className={`text-lg font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>Reminder History</h2>
+                <p className={`text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{selectedInvoice.invoiceNumber} • {selectedInvoice.customerName}</p>
+              </div>
+              <button onClick={() => setShowReminderHistory(false)} className={`p-2 rounded-xl ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {(selectedInvoice.reminders || []).length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageCircle className={`w-10 h-10 mx-auto mb-2 ${dark ? 'text-neutral-700' : 'text-gray-300'}`} />
+                  <p className={`text-sm ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>No reminders sent yet</p>
+                </div>
+              ) : (
+                (selectedInvoice.reminders || []).slice().reverse().map((rem, idx) => (
+                  <div key={idx} className={`p-3 rounded-xl border ${dark ? 'bg-neutral-900/50 border-neutral-800/60' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                        rem.type === 'overdue'
+                          ? dark ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-red-50 text-red-600 border-red-200'
+                          : dark ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-green-50 text-green-600 border-green-200'
+                      }`}>
+                        {rem.type === 'overdue' ? '⚠️ Overdue' : '💰 Payment'}
+                      </span>
+                      <span className={`text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>
+                        {new Date(rem.sentAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p className={`text-xs whitespace-pre-line ${dark ? 'text-neutral-400' : 'text-gray-600'}`}>{rem.message}</p>
+                    <div className={`flex items-center gap-2 mt-2 text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>
+                      <MessageCircle className="w-3 h-3" /> WhatsApp • {rem.customerPhone}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

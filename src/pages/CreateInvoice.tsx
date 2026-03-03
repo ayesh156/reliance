@@ -2,13 +2,14 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '../lib/utils';
-import { mockProducts, mockInvoices, type Invoice, type InvoiceItem, type Product, type Size } from '../data/mockData';
+import { mockProducts, mockInvoices, mockCustomers, type Invoice, type InvoiceItem, type Product, type Size, type Customer } from '../data/mockData';
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Search, ShoppingBag, User,
   CreditCard, ChevronRight, ChevronLeft, Barcode, Package,
-  Calendar, ArrowLeft,
+  Calendar, ArrowLeft, Printer, X,
 } from 'lucide-react';
+import { ThermalReceipt } from '../components/ThermalReceipt';
 
 type Step = 'customer' | 'items' | 'review';
 
@@ -65,6 +66,10 @@ export const CreateInvoice: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
 
   // Items
   const [items, setItems] = useState<InvoiceItem[]>([]);
@@ -79,11 +84,51 @@ export const CreateInvoice: React.FC = () => {
   const [dueDate, setDueDate] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; });
   const [showDueCal, setShowDueCal] = useState(false);
 
+  // Print state
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [createdInvoice, setCreatedInvoice] = useState<Invoice | null>(null);
+  const receiptRef = useRef<HTMLDivElement>(null);
+
   const filteredProducts = useMemo(() => {
     if (!productSearch) return products.filter(p => p.status !== 'out-of-stock');
     const q = productSearch.toLowerCase();
     return products.filter(p => p.status !== 'out-of-stock' && (p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)));
   }, [products, productSearch]);
+
+  const filteredCustomersList = useMemo(() => {
+    const activeCustomers = mockCustomers.filter(c => c.status === 'active');
+    if (!customerSearch.trim()) return activeCustomers;
+    const q = customerSearch.toLowerCase();
+    return activeCustomers.filter(c =>
+      c.name.toLowerCase().includes(q) || c.phone.includes(q) || c.email.toLowerCase().includes(q) || (c.nic && c.nic.includes(q))
+    );
+  }, [customerSearch]);
+
+  // Click outside to close customer dropdown
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (showCustomerDropdown && customerDropdownRef.current && !customerDropdownRef.current.contains(e.target as Node)) {
+        setShowCustomerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showCustomerDropdown]);
+
+  const selectCustomer = (customer: Customer | null) => {
+    setSelectedCustomer(customer);
+    if (customer) {
+      setCustomerName(customer.name);
+      setCustomerPhone(customer.phone);
+      setCustomerEmail(customer.email);
+      setCustomerSearch('');
+    } else {
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustomerEmail('');
+    }
+    setShowCustomerDropdown(false);
+  };
 
   const subtotal = items.reduce((s, i) => s + i.total, 0);
   const totalDiscount = items.reduce((s, i) => s + i.discount * i.quantity, 0);
@@ -128,8 +173,22 @@ export const CreateInvoice: React.FC = () => {
       notes: notes || undefined, createdAt: new Date().toISOString(),
     };
     mockInvoices.unshift(invoice);
+    setCreatedInvoice(invoice);
+    setShowPrintPreview(true);
     toast.success('Invoice Created', { description: `${nextInvoiceNumber} — ${formatCurrency(total)}` });
-    navigate('/invoices');
+  };
+
+  const handlePrint = () => {
+    if (!receiptRef.current) return;
+    const printWindow = window.open('', '_blank', 'width=350,height=700');
+    if (!printWindow) { toast.error('Popup blocked. Please allow popups.'); return; }
+    const content = receiptRef.current.innerHTML;
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Print Invoice</title><style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: white; }
+    </style></head><body>${content}</body></html>`);
+    printWindow.document.close();
+    setTimeout(() => { printWindow.focus(); printWindow.print(); printWindow.close(); }, 400);
   };
 
   const canProceedItems = items.length > 0;
@@ -174,6 +233,107 @@ export const CreateInvoice: React.FC = () => {
             <h3 className={`font-semibold ${dark ? 'text-white' : 'text-gray-900'}`}>Customer Details</h3>
             <span className={`text-xs px-2 py-0.5 rounded-full ${dark ? 'bg-neutral-800 text-neutral-500' : 'bg-gray-100 text-gray-400'}`}>Optional</span>
           </div>
+
+          {/* Customer Search / Select */}
+          <div className="mb-4" ref={customerDropdownRef}>
+            <label className={labelClass}>Search or Select Customer</label>
+            <div className="relative">
+              <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${
+                dark ? 'bg-neutral-800/50 border-neutral-700/50 focus-within:border-white/30' : 'bg-white border-gray-200 focus-within:border-gray-400'
+              }`}>
+                <Search className={`w-4 h-4 flex-shrink-0 ${dark ? 'text-neutral-500' : 'text-gray-400'}`} />
+                <input
+                  value={selectedCustomer ? selectedCustomer.name : customerSearch}
+                  onChange={e => {
+                    if (selectedCustomer) {
+                      setSelectedCustomer(null);
+                      setCustomerName('');
+                      setCustomerPhone('');
+                      setCustomerEmail('');
+                    }
+                    setCustomerSearch(e.target.value);
+                    setShowCustomerDropdown(true);
+                  }}
+                  onFocus={() => setShowCustomerDropdown(true)}
+                  placeholder="Search by name, phone, email, or NIC..."
+                  className={`bg-transparent border-none outline-none flex-1 text-sm ${dark ? 'text-white placeholder-neutral-500' : 'text-gray-900 placeholder-gray-400'}`}
+                />
+                {(selectedCustomer || customerSearch) && (
+                  <button onClick={() => { selectCustomer(null); setCustomerSearch(''); }} className={`p-0.5 rounded ${dark ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-200 text-gray-400'}`}>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Selected customer badge */}
+              {selectedCustomer && (
+                <div className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-xl ${dark ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-200'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${dark ? 'bg-neutral-800 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                    {selectedCustomer.name.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${dark ? 'text-green-400' : 'text-green-700'}`}>{selectedCustomer.name}</p>
+                    <p className={`text-[10px] ${dark ? 'text-green-500/60' : 'text-green-600/60'}`}>{selectedCustomer.customerType} · {selectedCustomer.phone}</p>
+                  </div>
+                  <button onClick={() => { selectCustomer(null); setCustomerSearch(''); }} className={`p-1 rounded-lg ${dark ? 'hover:bg-green-500/20 text-green-400' : 'hover:bg-green-100 text-green-600'}`}>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Customer dropdown */}
+              {showCustomerDropdown && !selectedCustomer && (
+                <div className={`absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl overflow-hidden z-50 max-h-64 overflow-y-auto ${dark ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
+                  {/* Walk-in Customer Option */}
+                  <button
+                    onClick={() => { setCustomerName('Walk-in Customer'); setSelectedCustomer(null); setCustomerSearch(''); setShowCustomerDropdown(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${dark ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'}`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${dark ? 'bg-neutral-800' : 'bg-gray-100'}`}>
+                      <User className={`w-4 h-4 ${dark ? 'text-neutral-400' : 'text-gray-500'}`} />
+                    </div>
+                    <div>
+                      <p className={`text-sm font-medium ${dark ? 'text-white' : 'text-gray-900'}`}>Walk-in Customer</p>
+                      <p className={`text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>No customer record needed</p>
+                    </div>
+                  </button>
+
+                  {filteredCustomersList.length > 0 && (
+                    <div className={`border-t ${dark ? 'border-neutral-800' : 'border-gray-100'}`}>
+                      <p className={`px-3 py-1.5 text-[10px] uppercase font-semibold tracking-wider ${dark ? 'text-neutral-600' : 'text-gray-400'}`}>Existing Customers</p>
+                      {filteredCustomersList.slice(0, 10).map(c => (
+                        <button
+                          key={c.id}
+                          onClick={() => selectCustomer(c)}
+                          className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${dark ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'}`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${dark ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                            {c.name.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium truncate ${dark ? 'text-white' : 'text-gray-900'}`}>{c.name}</p>
+                            <p className={`text-[10px] ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{c.phone} · {c.customerType}</p>
+                          </div>
+                          {c.outstandingBalance > 0 && (
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${dark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+                              {formatCurrency(c.outstandingBalance)} due
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {filteredCustomersList.length === 0 && customerSearch.trim() && (
+                    <div className={`px-3 py-4 text-center text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>
+                      No customers found for &ldquo;{customerSearch}&rdquo;
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2"><label className={labelClass}>Customer Name</label><input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Walk-in Customer" className={inputClass} /></div>
             <div><label className={labelClass}>Phone Number</label><input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="077-XXXXXXX" className={inputClass} /></div>
@@ -340,6 +500,45 @@ export const CreateInvoice: React.FC = () => {
           </button>
         )}
       </div>
+
+      {/* ─── PRINT PREVIEW MODAL ─── */}
+      {showPrintPreview && createdInvoice && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className={`relative w-full max-w-md max-h-[95vh] flex flex-col rounded-2xl overflow-hidden ${dark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200 shadow-2xl'}`}>
+            {/* Header */}
+            <div className={`flex items-center justify-between px-4 py-3 border-b ${dark ? 'border-neutral-800' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-2">
+                <Printer className={`w-5 h-5 ${dark ? 'text-neutral-400' : 'text-gray-500'}`} />
+                <div>
+                  <h2 className={`text-lg font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>Invoice Created!</h2>
+                  <p className={`text-xs ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{createdInvoice.invoiceNumber}</p>
+                </div>
+              </div>
+            </div>
+            {/* Receipt preview */}
+            <div className="flex-1 overflow-y-auto p-4" style={{ background: '#f5f5f5' }}>
+              <div className="shadow-xl rounded-lg overflow-hidden mx-auto" style={{ maxWidth: '320px' }}>
+                <ThermalReceipt ref={receiptRef} invoice={createdInvoice} />
+              </div>
+            </div>
+            {/* Footer */}
+            <div className={`flex items-center justify-between px-4 py-3 border-t ${dark ? 'border-neutral-800' : 'border-gray-200'}`}>
+              <button onClick={() => navigate('/invoices')} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${dark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                <X className="w-4 h-4" /> Skip
+              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { handlePrint(); }} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${dark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-brand-900 text-white hover:bg-brand-800'}`}>
+                  <Printer className="w-4 h-4" /> Print
+                </button>
+                <button onClick={() => navigate('/invoices')} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${dark ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
