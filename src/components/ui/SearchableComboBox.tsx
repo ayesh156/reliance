@@ -24,10 +24,13 @@ function DropdownPortal({
       const spaceBelow = window.innerHeight - rect.bottom;
       const dropH = 290;
       const goUp = spaceBelow < dropH && rect.top > dropH;
+      const dropWidth = Math.max(rect.width, 200);
+      const maxLeft = window.innerWidth - dropWidth - 8;
+      const clampedLeft = Math.min(rect.left, Math.max(0, maxLeft));
       setStyle({
         position: 'fixed',
-        left: rect.left,
-        width: Math.max(rect.width, 200),
+        left: clampedLeft,
+        width: Math.min(dropWidth, window.innerWidth - 16),
         ...(goUp
           ? { bottom: window.innerHeight - rect.top + 4 }
           : { top: rect.bottom + 4 }),

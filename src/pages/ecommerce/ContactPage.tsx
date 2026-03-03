@@ -81,7 +81,7 @@ export const ContactPage: React.FC = () => {
                 href="https://wa.me/94711350123?text=Hi%20Reliance!%20I%E2%80%99d%20like%20to%20inquire%20about%20your%20products."
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 w-full px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 hover:bg-green-500/20 transition-all text-sm font-medium"
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20 ${dark ? 'text-green-400' : 'text-green-600'} hover:bg-green-500/20 transition-all text-sm font-medium`}
               >
                 <MessageCircle className="w-5 h-5" />
                 <div>

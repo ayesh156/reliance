@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatCurrency } from '../lib/utils';
 import {
@@ -16,11 +17,13 @@ import { toast } from 'sonner';
 import { DeleteConfirmationModal } from '../components/modals/DeleteConfirmationModal';
 import { SearchableComboBox, type ComboBoxOption } from '../components/ui/SearchableComboBox';
 import { ImageUpload } from '../components/ui/ImageUpload';
+import JsBarcode from 'jsbarcode';
 import {
   Search, Plus, Package, Edit, Trash2, Eye, Filter, Calendar,
   Grid3X3, List, X, ChevronLeft, ChevronRight, SortAsc, SortDesc,
   ChevronsLeft, ChevronsRight, Save, Ruler, Palette, Shirt,
   Watch, Footprints, Zap, Briefcase, Crown, Gem, Baby, ImagePlus,
+  Barcode, Printer,
 } from 'lucide-react';
 
 /** Map of colour names → approximate hex values for dots */
@@ -100,6 +103,31 @@ const InlineCalendar: React.FC<{
 export const Products: React.FC = () => {
   const { theme } = useTheme();
   const dark = theme === 'dark';
+  const navigate = useNavigate();
+
+  // ─── Inline Barcode Display ───
+  const BarcodeDisplay: React.FC<{ value: string; width?: number; height?: number; lightBg?: boolean }> = ({ value, width = 1.5, height = 40, lightBg }) => {
+    const svgRef = useRef<SVGSVGElement>(null);
+    useEffect(() => {
+      if (svgRef.current && value) {
+        try {
+          JsBarcode(svgRef.current, value, {
+            format: 'CODE128',
+            width,
+            height,
+            displayValue: true,
+            fontSize: 12,
+            margin: 4,
+            background: 'transparent',
+            lineColor: lightBg ? '#1e293b' : dark ? '#e2e8f0' : '#1e293b',
+          });
+        } catch {
+          // Invalid barcode value
+        }
+      }
+    }, [value, width, height, lightBg]);
+    return <svg ref={svgRef} />;
+  };
 
   // ─── Category icon helper ───
   const categoryIcon = (category: string) => {
@@ -168,6 +196,7 @@ export const Products: React.FC = () => {
   const [formStock, setFormStock] = useState('');
   const [formLowStockThreshold, setFormLowStockThreshold] = useState('10');
   const [formImage, setFormImage] = useState<string | undefined>();
+  const [formBarcode, setFormBarcode] = useState('');
 
   const gridPerPageOptions = [8, 12, 16, 24];
   const tablePerPageOptions = [5, 10, 20, 50];
@@ -271,9 +300,16 @@ export const Products: React.FC = () => {
     setFormDescription(''); setFormFabricType('Cotton'); setFormSizes([]);
     setFormColors([]); setFormCostPrice(''); setFormSellingPrice('');
     setFormStock(''); setFormLowStockThreshold('10'); setFormImage(undefined);
+    setFormBarcode('');
   }, []);
 
-  const openAddModal = () => { resetForm(); setShowAddModal(true); };
+  const openAddModal = () => {
+    resetForm();
+    // Auto-generate a 13-digit barcode
+    const ts = Date.now().toString().slice(-10);
+    setFormBarcode(`890${ts}`);
+    setShowAddModal(true);
+  };
 
   const openEditModal = (p: Product) => {
     setSelectedProduct(p);
@@ -281,7 +317,7 @@ export const Products: React.FC = () => {
     setFormDescription(p.description || ''); setFormFabricType(p.fabricType); setFormSizes([...p.sizes]);
     setFormColors([...p.colors]); setFormCostPrice(p.costPrice.toString()); setFormSellingPrice(p.sellingPrice.toString());
     setFormStock(p.stock.toString()); setFormLowStockThreshold(p.lowStockThreshold.toString());
-    setFormImage(p.image);
+    setFormImage(p.image); setFormBarcode(p.barcode || '');
     setShowEditModal(true);
   };
 
@@ -298,7 +334,7 @@ export const Products: React.FC = () => {
 
     if (isEdit && selectedProduct) {
       setProducts(prev => prev.map(p => p.id === selectedProduct.id ? {
-        ...p, name: formName, sku: formSku, category: formCategory || 'Uncategorized', brand: formBrand || 'Unbranded',
+        ...p, name: formName, sku: formSku, barcode: formBarcode, category: formCategory || 'Uncategorized', brand: formBrand || 'Unbranded',
         description: formDescription || undefined, fabricType: formFabricType, sizes: formSizes, colors: formColors,
         costPrice: parseFloat(formCostPrice) || 0, sellingPrice: parseFloat(formSellingPrice) || 0,
         stock, lowStockThreshold: threshold, status, image: formImage,
@@ -307,7 +343,7 @@ export const Products: React.FC = () => {
       toast.success('Product updated', { description: formName });
     } else {
       const newProduct: Product = {
-        id: `p-${Date.now()}`, sku: formSku, name: formName,
+        id: `p-${Date.now()}`, sku: formSku, barcode: formBarcode, name: formName,
         category: formCategory || 'Uncategorized', brand: formBrand || 'Unbranded',
         description: formDescription || undefined, fabricType: formFabricType, sizes: formSizes, colors: formColors,
         costPrice: parseFloat(formCostPrice) || 0, sellingPrice: parseFloat(formSellingPrice) || 0,
@@ -463,6 +499,24 @@ export const Products: React.FC = () => {
             {/* Sizes */}
             <div className={`p-4 rounded-xl border ${dark ? 'bg-neutral-900/50 border-neutral-800/60' : 'bg-white border-gray-200'}`}>
               <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${dark ? 'text-white' : 'text-gray-900'}`}>
+                <Barcode className="w-4 h-4" /> Barcode
+              </h3>
+              <div className="space-y-3">
+                {formBarcode && (
+                  <div className="flex flex-col items-center p-3 rounded-xl bg-white">
+                    <BarcodeDisplay value={formBarcode} width={1.3} height={36} lightBg />
+                  </div>
+                )}
+                <div>
+                  <label className={labelClass}>Barcode ID</label>
+                  <input value={formBarcode} onChange={e => setFormBarcode(e.target.value)} placeholder="e.g., 8901234567001" className={inputClass} />
+                </div>
+              </div>
+            </div>
+
+            {/* Sizes */}
+            <div className={`p-4 rounded-xl border ${dark ? 'bg-neutral-900/50 border-neutral-800/60' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${dark ? 'text-white' : 'text-gray-900'}`}>
                 <Ruler className="w-4 h-4" /> Sizes *
                 <span className={`text-xs font-normal ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>{formSizes.length} selected</span>
               </h3>
@@ -599,6 +653,16 @@ export const Products: React.FC = () => {
             </div>
             {p.description && <p className={`text-sm ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>{p.description}</p>}
 
+            {/* Barcode */}
+            {p.barcode && (
+              <div className={`p-3 rounded-xl border text-center ${dark ? 'bg-neutral-900/50 border-neutral-800/60' : 'bg-gray-50 border-gray-200'}`}>
+                <p className={`text-[10px] uppercase tracking-wider mb-2 ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>Barcode</p>
+                <div className="flex justify-center bg-white rounded-lg p-2">
+                  <BarcodeDisplay value={p.barcode} width={1.5} height={40} lightBg />
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               {([['Category', p.category], ['Brand', p.brand], ['Fabric', p.fabricType], ['Stock', `${p.stock} units`], ['Cost', formatCurrency(p.costPrice)], ['Selling', formatCurrency(p.sellingPrice)]] as [string, string][]).map(([label, val]) => (
                 <div key={label} className={`p-2.5 rounded-lg ${dark ? 'bg-neutral-900/50 border border-neutral-800/60' : 'bg-gray-50 border border-gray-200'}`}>
@@ -665,11 +729,18 @@ export const Products: React.FC = () => {
             Manage your clothing inventory — {filteredProducts.length} items
           </p>
         </div>
-        <button onClick={openAddModal} className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm shadow-lg transition-all ${
-          dark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-brand-900 text-white hover:bg-brand-800'
-        }`}>
-          <Plus className="w-5 h-5" /> Add Product
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate('/products/labels')} className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
+            dark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border border-neutral-700/50' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+          }`}>
+            <Printer className="w-4 h-4" /> Print Labels
+          </button>
+          <button onClick={openAddModal} className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm shadow-lg transition-all ${
+            dark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-brand-900 text-white hover:bg-brand-800'
+          }`}>
+            <Plus className="w-5 h-5" /> Add Product
+          </button>
+        </div>
       </div>
 
       {/* ─── Search + Filters Bar ─── */}

@@ -602,7 +602,7 @@ export const Reports: React.FC = () => {
               </button>
             ))}
           </div>
-          <button onClick={exportPDF} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-neutral-800 to-brand-950 text-white rounded-xl text-sm font-medium shadow-lg transition-all hover:shadow-xl dark:from-white dark:to-neutral-200 dark:text-black">
+          <button onClick={exportPDF} className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-r rounded-xl text-sm font-medium shadow-lg transition-all hover:shadow-xl ${theme === 'dark' ? 'from-white to-neutral-200 text-black' : 'from-neutral-800 to-brand-950 text-white'}`}>
             <Download className="w-4 h-4" />
             Export PDF
           </button>

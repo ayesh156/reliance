@@ -65,16 +65,16 @@ export const ProductDetail: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
       {/* Breadcrumbs */}
-      <div className="flex items-center gap-2 text-xs mb-6">
-        <NavLink to="/store" className={`${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>Home</NavLink>
-        <span className={dark ? 'text-neutral-600' : 'text-gray-300'}>/</span>
-        <NavLink to="/store/shop" className={`${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>Shop</NavLink>
-        <span className={dark ? 'text-neutral-600' : 'text-gray-300'}>/</span>
-        <NavLink to={`/store/shop?category=${encodeURIComponent(product.category)}`} className={`${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>
+      <div className="flex items-center gap-2 text-xs mb-6 overflow-x-auto scrollbar-hide min-w-0">
+        <NavLink to="/store" className={`flex-shrink-0 ${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>Home</NavLink>
+        <span className={`flex-shrink-0 ${dark ? 'text-neutral-600' : 'text-gray-300'}`}>/</span>
+        <NavLink to="/store/shop" className={`flex-shrink-0 ${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>Shop</NavLink>
+        <span className={`flex-shrink-0 ${dark ? 'text-neutral-600' : 'text-gray-300'}`}>/</span>
+        <NavLink to={`/store/shop?category=${encodeURIComponent(product.category)}`} className={`flex-shrink-0 ${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>
           {product.category}
         </NavLink>
-        <span className={dark ? 'text-neutral-600' : 'text-gray-300'}>/</span>
-        <span className={dark ? 'text-neutral-300' : 'text-gray-700'}>{product.name}</span>
+        <span className={`flex-shrink-0 ${dark ? 'text-neutral-600' : 'text-gray-300'}`}>/</span>
+        <span className={`truncate max-w-[140px] sm:max-w-none ${dark ? 'text-neutral-300' : 'text-gray-700'}`}>{product.name}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">

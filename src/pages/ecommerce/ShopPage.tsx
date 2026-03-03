@@ -230,10 +230,10 @@ export const ShopPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setMobileFiltersOpen(true)}
-            className={`lg:hidden flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+            className={`lg:hidden flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
               dark ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-800' : 'border-gray-200 text-gray-600 hover:bg-gray-100'
             }`}
           >
@@ -241,11 +241,11 @@ export const ShopPage: React.FC = () => {
             Filters
           </button>
 
-          <div className="relative">
+          <div className="relative flex-1 min-w-[120px] sm:flex-none">
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value)}
-              className={`appearance-none pl-4 pr-10 py-2.5 rounded-xl border text-sm font-medium cursor-pointer ${
+              className={`w-full sm:w-auto appearance-none pl-3 sm:pl-4 pr-10 py-2.5 rounded-xl border text-sm font-medium cursor-pointer ${
                 dark
                   ? 'bg-neutral-900 border-neutral-700 text-neutral-300'
                   : 'bg-white border-gray-200 text-gray-600'

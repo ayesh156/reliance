@@ -49,7 +49,7 @@ export const CartPage: React.FC = () => {
         <span className={dark ? 'text-neutral-300' : 'text-gray-700'}>Shopping Cart</span>
       </div>
 
-      <h1 className={`font-display text-3xl font-bold mb-2 ${dark ? 'text-white' : 'text-brand-900'}`}>Shopping Cart</h1>
+      <h1 className={`font-display text-2xl sm:text-3xl font-bold mb-2 ${dark ? 'text-white' : 'text-brand-900'}`}>Shopping Cart</h1>
       <p className={`text-sm mb-8 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>{totalItems} item{totalItems !== 1 ? 's' : ''} in your cart</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

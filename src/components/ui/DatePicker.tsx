@@ -106,7 +106,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         <div
           ref={popoverRef}
           className={cn(
-            'absolute top-full left-0 mt-2 w-72 rounded-2xl border shadow-lg z-50 p-4',
+            'absolute top-full left-0 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border shadow-lg z-50 p-4',
             dark
               ? 'bg-neutral-900 border-neutral-700/50'
               : 'bg-white border-gray-200'

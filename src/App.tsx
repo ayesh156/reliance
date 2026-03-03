@@ -10,6 +10,7 @@ import { useTheme } from './contexts/ThemeContext';
 // Admin pages
 import { Dashboard } from './pages/Dashboard';
 import { Products } from './pages/Products';
+import { ProductLabels } from './pages/ProductLabels';
 import { Categories } from './pages/Categories';
 import { Invoices } from './pages/Invoices';
 import { CreateInvoice } from './pages/CreateInvoice';
@@ -70,6 +71,7 @@ function App() {
             {/* Admin Panel */}
             <Route path="/" element={<AdminPage><Dashboard /></AdminPage>} />
             <Route path="/products" element={<AdminPage><Products /></AdminPage>} />
+            <Route path="/products/labels" element={<AdminPage><ProductLabels /></AdminPage>} />
             <Route path="/categories" element={<AdminPage><Categories /></AdminPage>} />
             <Route path="/invoices" element={<AdminPage><Invoices /></AdminPage>} />
             <Route path="/invoices/create" element={<AdminPage><CreateInvoice /></AdminPage>} />

@@ -86,7 +86,7 @@ export const StoreFront: React.FC = () => {
             </div>
 
             {/* Stats */}
-            <div className="flex items-center gap-8 mt-12">
+            <div className="flex flex-wrap items-center gap-4 sm:gap-8 mt-8 sm:mt-12">
               {[
                 { label: 'Products', value: `${mockProducts.length}+` },
                 { label: 'Categories', value: `${activeCategories.length}+` },
@@ -289,7 +289,7 @@ export const StoreFront: React.FC = () => {
                   : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-md'
               }`}
             >
-              <div className={`${idx === 0 ? 'w-40 sm:w-52' : 'w-24'} aspect-square rounded-xl overflow-hidden flex-shrink-0`}>
+              <div className={`${idx === 0 ? 'w-28 sm:w-40 lg:w-52' : 'w-24'} aspect-square rounded-xl overflow-hidden flex-shrink-0`}>
                 <img
                   src={product.image || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=500&q=80'}
                   alt={product.name}
@@ -317,7 +317,7 @@ export const StoreFront: React.FC = () => {
             <h2 className={`font-display text-3xl lg:text-4xl font-bold ${dark ? 'text-white' : 'text-brand-900'}`}>Customer Reviews</h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {testimonials.map((t, idx) => (
               <div key={idx} className={`p-6 rounded-2xl border ${
                 dark
