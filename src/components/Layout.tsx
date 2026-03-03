@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import {
   LayoutDashboard,
@@ -19,6 +19,8 @@ import {
   LogOut,
   Bell,
   Search,
+  Globe,
+  ExternalLink,
 } from 'lucide-react';
 
 interface NavItem {
@@ -43,6 +45,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const currentPage = navItems.find(n => {
     if (n.path === '/') return location.pathname === '/';
@@ -196,8 +199,23 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Visit Store */}
+            <button
+              onClick={() => navigate('/store')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
+                theme === 'dark'
+                  ? 'bg-neutral-900/50 border-neutral-800 hover:bg-neutral-800 text-neutral-300 hover:text-white'
+                  : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-600 hover:text-gray-900'
+              }`}
+              title="Visit Store"
+            >
+              <Globe className="w-4 h-4" />
+              <span className="hidden sm:inline">Visit Store</span>
+              <ExternalLink className="w-3 h-3 opacity-50" />
+            </button>
+
             {/* Search */}
-            <button className={`p-2.5 rounded-xl border transition-all ${
+            <button className={`hidden sm:flex p-2.5 rounded-xl border transition-all ${
               theme === 'dark'
                 ? 'bg-neutral-900/50 border-neutral-800 hover:bg-neutral-800 text-neutral-400'
                 : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-500'
@@ -206,7 +224,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </button>
 
             {/* Notifications */}
-            <button className={`p-2.5 rounded-xl border transition-all relative ${
+            <button className={`hidden sm:flex p-2.5 rounded-xl border transition-all relative ${
               theme === 'dark'
                 ? 'bg-neutral-900/50 border-neutral-800 hover:bg-neutral-800 text-neutral-400'
                 : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-500'
