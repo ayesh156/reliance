@@ -1,5 +1,6 @@
+import { useEffect } from 'react';
 import './index.css';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { CartProvider } from './contexts/CartContext';
 import { Layout } from './components/Layout';
@@ -44,6 +45,15 @@ function ThemedToaster() {
   );
 }
 
+// Auto scroll to top on route change
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname]);
+  return null;
+}
+
 // Wrapper to render admin pages inside the admin Layout
 function AdminPage({ children }: { children: React.ReactNode }) {
   return <Layout>{children}</Layout>;
@@ -55,6 +65,7 @@ function App() {
       <CartProvider>
         <ThemedToaster />
         <HashRouter>
+          <ScrollToTop />
           <Routes>
             {/* Admin Panel */}
             <Route path="/" element={<AdminPage><Dashboard /></AdminPage>} />
