@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { formatCurrency } from '../lib/utils';
 import { mockInvoices as initialInvoices, mockCustomers, type Invoice, type InvoiceItem, type InvoiceReminder, type Customer } from '../data/mockData';
@@ -305,18 +305,56 @@ export const Invoices: React.FC = () => {
     setShowPrintPreview(true);
   };
 
-  const handlePrint = () => {
+  const printIframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  const buildReceiptHTML = useCallback(() => {
+    if (!receiptRef.current) return '';
+    // Get receipt HTML but strip @media print styles that hide body content
+    // (those styles are designed for same-page print, not iframe/popup)
+    let content = receiptRef.current.innerHTML;
+    content = content.replace(/@media\s+print\s*\{[^}]*body\s*\*\s*\{[^}]*visibility:\s*hidden[^}]*\}[^}]*\}/gs, '');
+    content = content.replace(/position:\s*fixed\s*!important/g, 'position: relative');
+    return `<!DOCTYPE html><html><head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Print Invoice</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 80mm; background: white; }
+        body { display: flex; justify-content: center; }
+      </style>
+    </head><body>${content}</body></html>`;
+  }, []);
+
+  const handlePrint = useCallback(() => {
     if (!receiptRef.current) return;
-    const printWindow = window.open('', '_blank', 'width=350,height=700');
-    if (!printWindow) { toast.error('Popup blocked. Please allow popups.'); return; }
-    const content = receiptRef.current.innerHTML;
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Print Invoice</title><style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { background: white; }
-    </style></head><body>${content}</body></html>`);
-    printWindow.document.close();
-    setTimeout(() => { printWindow.focus(); printWindow.print(); printWindow.close(); }, 400);
-  };
+    const html = buildReceiptHTML();
+
+    // Always use iframe — reliable on both desktop & mobile
+    let iframe = printIframeRef.current;
+    if (iframe?.parentNode) iframe.parentNode.removeChild(iframe);
+
+    iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-10000px;left:-10000px;width:80mm;height:auto;border:none;opacity:0;';
+    document.body.appendChild(iframe);
+    printIframeRef.current = iframe;
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return;
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    if (iframe.contentWindow) {
+      iframe.contentWindow.onafterprint = () => {
+        setTimeout(() => { if (iframe?.parentNode) iframe.parentNode.removeChild(iframe); printIframeRef.current = null; }, 500);
+      };
+    }
+    setTimeout(() => {
+      try { iframe!.contentWindow?.focus(); iframe!.contentWindow?.print(); } catch {}
+    }, 800);
+  }, [buildReceiptHTML]);
 
   // ─── WhatsApp Reminder helpers ───
   const formatPhoneForWhatsApp = (phone: string): string => {

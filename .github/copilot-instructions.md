@@ -523,49 +523,130 @@ const openEditModal = (item: ItemType) => {
 
 ---
 
-## 🖨️ Printing Patterns
+## 🖨️ Printing Patterns (Mobile-Compatible — MANDATORY)
 
-### Window.open + iframe fallback (for mobile)
-The codebase uses a mobile-compatible print approach:
+**CRITICAL:** `window.open()` is unreliable on Android/iOS mobile browsers. Popups are blocked, `onload` never fires, and calling `.close()` after `.print()` kills the print dialog (causing the "Preparing preview..." hang forever).
+
+### The Correct Pattern: iframe-first on mobile, window.open on desktop
+
 ```tsx
-const handlePrint = useCallback(() => {
-  const printHTML = buildPrintHTML();
+const printIframeRef = useRef<HTMLIFrameElement | null>(null);
 
-  // Attempt 1: window.open (works on desktop)
+// Build the HTML document to print
+const buildPrintHTML = useCallback(() => {
+  // ... return full HTML string with <!DOCTYPE html>, <meta viewport>, styles, content
+}, []);
+
+// Print via hidden iframe (works on ALL devices)
+const printViaIframe = useCallback((html: string) => {
+  // Clean up any existing iframe
+  let iframe = printIframeRef.current;
+  if (iframe?.parentNode) iframe.parentNode.removeChild(iframe);
+
+  iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;top:-10000px;left:-10000px;width:210mm;height:297mm;border:none;opacity:0;';
+  document.body.appendChild(iframe);
+  printIframeRef.current = iframe;
+
+  const doc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!doc) return;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  // Auto-cleanup after print dialog closes
+  if (iframe.contentWindow) {
+    iframe.contentWindow.onafterprint = () => {
+      setTimeout(() => { if (iframe?.parentNode) iframe.parentNode.removeChild(iframe); printIframeRef.current = null; }, 500);
+    };
+  }
+  // Wait for content to render, then trigger print
+  setTimeout(() => {
+    try { iframe!.contentWindow?.focus(); iframe!.contentWindow?.print(); } catch {}
+  }, 1000);
+}, []);
+
+// Main print handler
+const handlePrint = useCallback(() => {
+  const html = buildPrintHTML();
+
+  // Detect mobile → always use iframe (window.open unreliable)
+  const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent) || window.innerWidth < 768;
+  if (isMobile) { printViaIframe(html); return; }
+
+  // Desktop: try window.open for better UX
   const win = window.open('', '_blank');
   if (win) {
-    win.document.write(printHTML);
+    win.document.write(html);
     win.document.close();
-    win.onload = () => setTimeout(() => { win.focus(); win.print(); win.close(); }, 600);
+    setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 800);
+    // NEVER call win.close() — let the user close it
     return;
   }
 
-  // Attempt 2: hidden iframe fallback (mobile browsers that block popups)
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:-10000px;left:-10000px;width:210mm;height:297mm;border:none;';
-  document.body.appendChild(iframe);
-  const doc = iframe.contentDocument;
-  if (doc) {
-    doc.open();
-    doc.write(printHTML);
-    doc.close();
-    setTimeout(() => {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    }, 800);
-  }
-}, []);
+  // Fallback to iframe if popup blocked
+  printViaIframe(html);
+}, [buildPrintHTML, printViaIframe]);
 ```
 
-### Thermal receipt printing
-See `ThermalReceipt.tsx` for the 80mm thermal receipt format used in invoices.
+### 🚫 Printing Anti-Patterns (NEVER DO THESE)
 
-### Print HTML requirements:
-- Always include `<meta name="viewport" content="width=device-width, initial-scale=1.0" />`
-- Embed Google Fonts via `<link>` for Inter font
-- Include `-apple-system` as fallback for iOS
-- Add `@page { margin: ... }` for proper paper margins
-- Use `print-color-adjust: exact` for colour preservation
+```tsx
+// ❌ NEVER: window.open with size params (blocked on mobile)
+window.open('', '_blank', 'width=350,height=700');
+
+// ❌ NEVER: Close the print window after print() (kills dialog on Android)
+win.print(); win.close();
+
+// ❌ NEVER: Rely on win.onload after document.write (never fires on Android)
+win.onload = () => { win.print(); };
+
+// ❌ NEVER: Use window.open as the only print method (no fallback)
+const win = window.open('', '_blank');
+if (!win) { toast.error('Popup blocked'); return; }  // Mobile users stuck!
+
+// ❌ NEVER: Include ThermalReceipt's @media print "body * { visibility: hidden }" in iframe/popup
+// Those styles are for same-page printing only — strip them when copying innerHTML to a separate document
+```
+
+### Receipt Printing (ThermalReceipt)
+When printing thermal receipts in an iframe/popup:
+1. **Strip `body * { visibility: hidden }` styles** — these hide everything in the standalone document
+2. **Replace `position: fixed !important`** with `position: relative` — fixed positioning breaks in iframes
+3. **Set `@page { size: 80mm auto; margin: 0; }`** for proper thermal paper sizing
+4. **Use iframe width `80mm`** instead of `210mm` (A4)
+
+```tsx
+// Strip harmful @media print styles from ThermalReceipt innerHTML
+let content = receiptRef.current.innerHTML;
+content = content.replace(/@media\s+print\s*\{[^}]*body\s*\*\s*\{[^}]*visibility:\s*hidden[^}]*\}[^}]*\}/gs, '');
+content = content.replace(/position:\s*fixed\s*!important/g, 'position: relative');
+```
+
+### General Print Page (ProductLabels, Reports)
+- Use `@page { size: A4; margin: 8mm; }` for standard labels/reports
+- Embed Google Fonts `<link>` in the print HTML (not just CSS `font-family`)
+- Include `-apple-system` font fallback for iOS Safari
+- Add `print-color-adjust: exact` for colour preservation
+- Use `iframe.style.width = '210mm'` for A4 content
+
+### Print HTML Template
+```html
+<!DOCTYPE html><html><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Print Title</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    @page { size: A4; margin: 8mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+           -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  </style>
+</head><body><!-- content --></body></html>
+```
 
 ---
 

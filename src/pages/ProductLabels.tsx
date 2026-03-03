@@ -121,42 +121,63 @@ export const ProductLabels: React.FC = () => {
     </head><body>${html}</body></html>`;
   }, [dim.width]);
 
-  // ─── Print handler (mobile-compatible: hidden iframe fallback) ───
-  const handlePrint = useCallback(() => {
-    if (!printRef.current || selected.length === 0) return;
-
-    const printHTML = buildPrintHTML();
-
-    // Try window.open first (desktop + some mobile browsers)
-    const win = window.open('', '_blank');
-    if (win) {
-      win.document.write(printHTML);
-      win.document.close();
-      win.onload = () => { setTimeout(() => { win.focus(); win.print(); win.close(); }, 600); };
-      return;
-    }
-
-    // Fallback: hidden iframe (mobile browsers that block popups)
+  // ─── Print via hidden iframe (works on both desktop & mobile) ───
+  const printViaIframe = useCallback((html: string) => {
     let iframe = iframeRef.current;
-    if (!iframe) {
-      iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position:fixed;top:-10000px;left:-10000px;width:210mm;height:297mm;border:none;';
-      document.body.appendChild(iframe);
-      iframeRef.current = iframe;
-    }
+    if (iframe?.parentNode) iframe.parentNode.removeChild(iframe);
+
+    iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-10000px;left:-10000px;width:210mm;height:297mm;border:none;opacity:0;';
+    document.body.appendChild(iframe);
+    iframeRef.current = iframe;
 
     const doc = iframe.contentDocument || iframe.contentWindow?.document;
     if (!doc) return;
     doc.open();
-    doc.write(printHTML);
+    doc.write(html);
     doc.close();
 
-    // Wait for fonts + SVGs to render before printing
-    setTimeout(() => {
-      iframe!.contentWindow?.focus();
-      iframe!.contentWindow?.print();
-    }, 800);
-  }, [selected, buildPrintHTML]);
+    // Wait for fonts + SVG rendering, then trigger print
+    const tryPrint = () => {
+      try {
+        iframe!.contentWindow?.focus();
+        iframe!.contentWindow?.print();
+      } catch { /* cross-origin or closed */ }
+    };
+    // Use onload if supported, with a timeout safety net
+    if (iframe.contentWindow) {
+      iframe.contentWindow.onafterprint = () => {
+        setTimeout(() => { if (iframe?.parentNode) iframe.parentNode.removeChild(iframe); iframeRef.current = null; }, 500);
+      };
+    }
+    setTimeout(tryPrint, 1000);
+  }, []);
+
+  // ─── Print handler (mobile-compatible) ───
+  const handlePrint = useCallback(() => {
+    if (!printRef.current || selected.length === 0) return;
+    const printHTML = buildPrintHTML();
+
+    // Detect mobile: use iframe directly (window.open unreliable on mobile)
+    const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent) || window.innerWidth < 768;
+    if (isMobile) {
+      printViaIframe(printHTML);
+      return;
+    }
+
+    // Desktop: try window.open for better UX
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(printHTML);
+      win.document.close();
+      // Use setTimeout — onload is unreliable after document.write
+      setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 800);
+      return;
+    }
+
+    // Fallback to iframe if popup blocked
+    printViaIframe(printHTML);
+  }, [selected, buildPrintHTML, printViaIframe]);
 
   // Cleanup iframe on unmount
   useEffect(() => {
