@@ -3,6 +3,7 @@ import './index.css';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { CartProvider } from './contexts/CartContext';
+import { WishlistProvider } from './contexts/WishlistContext';
 import { Layout } from './components/Layout';
 import { Toaster } from 'sonner';
 import { useTheme } from './contexts/ThemeContext';
@@ -28,6 +29,7 @@ import { CartPage } from './pages/ecommerce/CartPage';
 import { CategoriesPage } from './pages/ecommerce/CategoriesPage';
 import { AboutPage } from './pages/ecommerce/AboutPage';
 import { ContactPage } from './pages/ecommerce/ContactPage';
+import { WishlistPage } from './pages/ecommerce/WishlistPage';
 
 function ThemedToaster() {
   const { theme } = useTheme();
@@ -64,6 +66,7 @@ function App() {
   return (
     <ThemeProvider>
       <CartProvider>
+        <WishlistProvider>
         <ThemedToaster />
         <HashRouter>
           <ScrollToTop />
@@ -86,12 +89,14 @@ function App() {
               <Route path="shop" element={<ShopPage />} />
               <Route path="product/:id" element={<ProductDetail />} />
               <Route path="cart" element={<CartPage />} />
+              <Route path="wishlist" element={<WishlistPage />} />
               <Route path="categories" element={<CategoriesPage />} />
               <Route path="about" element={<AboutPage />} />
               <Route path="contact" element={<ContactPage />} />
             </Route>
           </Routes>
         </HashRouter>
+        </WishlistProvider>
       </CartProvider>
     </ThemeProvider>
   );
