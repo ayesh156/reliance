@@ -206,7 +206,7 @@ export const ProductLabels: React.FC = () => {
       {/* ─── Header ─── */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <button onClick={() => navigate('/products')} className={`p-2 rounded-xl transition-all flex-shrink-0 ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button onClick={() => navigate('/system/products')} className={`p-2 rounded-xl transition-all flex-shrink-0 ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}>
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="min-w-0">

@@ -2,6 +2,8 @@ import React, { useState, useRef, useCallback } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCart } from '../../contexts/CartContext';
+import { useWishlist } from '../../contexts/WishlistContext';
+import { QuickAddDrawer } from '../ui/QuickAddDrawer';
 import {
   ShoppingBag,
   Search,
@@ -20,6 +22,7 @@ import {
   ArrowUp,
   MessageCircle,
   ChevronDown,
+  LayoutDashboard,
 } from 'lucide-react';
 
 // ── Mega Menu Data ──────────────────────────────────────────────────────────
@@ -122,6 +125,7 @@ const utilLinks = [
 export const EcommerceLayout: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { totalItems, setIsCartOpen } = useCart();
+  const { totalWishlist } = useWishlist();
   const [mobileMenuOpen, setMobileMenuOpen]   = useState(false);
   const [mobileExpanded, setMobileExpanded]   = useState<string | null>(null);
   const [searchOpen, setSearchOpen]           = useState(false);
@@ -154,7 +158,7 @@ export const EcommerceLayout: React.FC = () => {
           <div className="flex items-center gap-4">
             <span>Free delivery on orders over Rs. 5,000</span>
             <span>|</span>
-            <NavLink to="/" className="hover:text-white transition-colors">Admin Panel</NavLink>
+            <NavLink to="/system" className="hover:text-white transition-colors">Admin System</NavLink>
           </div>
         </div>
       </div>
@@ -242,11 +246,20 @@ export const EcommerceLayout: React.FC = () => {
               >
                 <Search className="w-5 h-5" />
               </button>
-              <button className={`p-2.5 rounded-full transition-all hidden sm:flex ${
-                dark ? 'hover:bg-neutral-800 text-neutral-300' : 'hover:bg-gray-100 text-gray-600'
-              }`}>
+              <NavLink
+                to="/store/wishlist"
+                className={`relative p-2.5 rounded-full transition-all hidden sm:flex ${
+                  dark ? 'hover:bg-neutral-800 text-neutral-300' : 'hover:bg-gray-100 text-gray-600'
+                }`}
+                aria-label="Wishlist"
+              >
                 <Heart className="w-5 h-5" />
-              </button>
+                {totalWishlist > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {totalWishlist}
+                  </span>
+                )}
+              </NavLink>
               <button
                 onClick={toggleTheme}
                 className={`p-2.5 rounded-full transition-all ${
@@ -473,6 +486,26 @@ export const EcommerceLayout: React.FC = () => {
                   <ChevronRight className="w-4 h-4 opacity-50" />
                 </NavLink>
               ))}
+
+              {/* Divider */}
+              <div className={`my-2 h-px ${dark ? 'bg-neutral-800' : 'bg-gray-100'}`} />
+
+              {/* Admin System link — mobile only */}
+              <NavLink
+                to="/system"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                  dark
+                    ? 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/50'
+                    : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <LayoutDashboard className="w-4 h-4" />
+                  Admin System
+                </span>
+                <ChevronRight className="w-4 h-4 opacity-40" />
+              </NavLink>
             </nav>
           </aside>
         </div>
@@ -482,6 +515,9 @@ export const EcommerceLayout: React.FC = () => {
       <main className="flex-1 min-w-0">
         <Outlet />
       </main>
+
+      {/* QuickAdd Drawer — portal-like, available on all store pages */}
+      <QuickAddDrawer />
 
       {/* Footer */}
       <footer className={`border-t ${dark ? 'bg-brand-950 border-neutral-800/60' : 'bg-gray-50 border-gray-200'}`}>

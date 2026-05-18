@@ -18,6 +18,10 @@ interface CartContextType {
   totalPrice: number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
+  // QuickAdd drawer
+  quickAddProduct: Product | null;
+  openQuickAdd: (product: Product) => void;
+  closeQuickAdd: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -33,6 +37,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return [];
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+
+  const openQuickAdd  = (product: Product) => setQuickAddProduct(product);
+  const closeQuickAdd = () => setQuickAddProduct(null);
 
   useEffect(() => {
     localStorage.setItem('reliance-cart', JSON.stringify(items));
@@ -80,6 +88,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     <CartContext.Provider value={{
       items, addToCart, removeFromCart, updateQuantity, clearCart,
       totalItems, totalPrice, isCartOpen, setIsCartOpen,
+      quickAddProduct, openQuickAdd, closeQuickAdd,
     }}>
       {children}
     </CartContext.Provider>

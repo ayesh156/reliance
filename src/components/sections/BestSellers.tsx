@@ -3,9 +3,9 @@ import { NavLink } from 'react-router-dom';
 import { ShoppingBag, Heart, ArrowRight, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCart } from '../../contexts/CartContext';
+import { useWishlist } from '../../contexts/WishlistContext';
 import { mockProducts } from '../../data/mockData';
 import type { Product } from '../../data/mockData';
-import { toast } from 'sonner';
 
 // ── Data — top 8 in-stock products as "best sellers" ────────────────────────
 const bestSellers: Product[] = mockProducts
@@ -17,7 +17,8 @@ const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-LK')}`;
 // ── Component ────────────────────────────────────────────────────────────────
 export const BestSellers: React.FC = () => {
   const { theme } = useTheme();
-  const { addToCart } = useCart();
+  const { openQuickAdd } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
   const dark = theme === 'dark';
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -30,8 +31,7 @@ export const BestSellers: React.FC = () => {
   const handleQuickAdd = (e: React.MouseEvent, product: Product) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product, product.sizes[0], product.colors[0], 1);
-    toast.success(`${product.name} added to cart`);
+    openQuickAdd(product);
   };
 
   return (
@@ -107,6 +107,8 @@ export const BestSellers: React.FC = () => {
               dark={dark}
               rank={idx + 1}
               onQuickAdd={handleQuickAdd}
+              isWishlisted={isInWishlist(product.id)}
+              onToggleWishlist={(e, p) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(p); }}
             />
           ))}
         </div>
@@ -136,9 +138,11 @@ interface CardProps {
   dark: boolean;
   rank: number;
   onQuickAdd: (e: React.MouseEvent, product: Product) => void;
+  isWishlisted: boolean;
+  onToggleWishlist: (e: React.MouseEvent, product: Product) => void;
 }
 
-const ProductCard: React.FC<CardProps> = ({ product, dark, rank, onQuickAdd }) => (
+const ProductCard: React.FC<CardProps> = ({ product, dark, rank, onQuickAdd, isWishlisted, onToggleWishlist }) => (
   <NavLink
     to={`/store/product/${product.id}`}
     // Snap + fixed width: 1 card on mobile, 2 on sm, 4 on lg
@@ -208,15 +212,17 @@ const ProductCard: React.FC<CardProps> = ({ product, dark, rank, onQuickAdd }) =
           </span>
         )}
         <button
-          onClick={e => { e.preventDefault(); e.stopPropagation(); }}
-          aria-label="Add to wishlist"
+          onClick={e => onToggleWishlist(e, product)}
+          aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           className={`p-2.5 border transition-colors duration-150 ${
-            dark
-              ? 'border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500'
-              : 'border-gray-200 text-gray-400 hover:text-brand-900 hover:border-gray-400'
+            isWishlisted
+              ? 'border-red-300 text-red-500'
+              : dark
+                ? 'border-neutral-700 text-neutral-400 hover:text-red-400 hover:border-red-400'
+                : 'border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-300'
           }`}
         >
-          <Heart className="w-3.5 h-3.5" />
+          <Heart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-red-500' : ''}`} />
         </button>
       </div>
     </div>

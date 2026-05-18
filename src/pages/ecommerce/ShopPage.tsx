@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { NavLink, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useCart } from '../../contexts/CartContext';
+import { useWishlist } from '../../contexts/WishlistContext';
 import { mockProducts, mockCategories, FABRIC_TYPES, type Product } from '../../data/mockData';
 import {
   Search, SlidersHorizontal, Grid3X3, LayoutList, X,
@@ -30,6 +31,7 @@ const sortOptions = [
 export const ShopPage: React.FC = () => {
   const { theme } = useTheme();
   const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
   const [searchParams] = useSearchParams();
   const dark = theme === 'dark';
 
@@ -376,11 +378,15 @@ export const ShopPage: React.FC = () => {
                         </button>
                       )}
                       <button
-                        onClick={e => { e.preventDefault(); e.stopPropagation(); }}
-                        className="p-2.5 bg-white/90 backdrop-blur-sm rounded-full text-black shadow-lg hover:bg-white transition-all"
-                        title="Wishlist"
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); toggleWishlist(product); }}
+                        aria-label={isInWishlist(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                        className={`p-2.5 backdrop-blur-sm rounded-full shadow-lg transition-all ${
+                          isInWishlist(product.id)
+                            ? 'bg-red-500 text-white hover:bg-red-600'
+                            : 'bg-white/90 text-black hover:bg-white'
+                        }`}
                       >
-                        <Heart className="w-4 h-4" />
+                        <Heart className={`w-4 h-4 ${isInWishlist(product.id) ? 'fill-white' : ''}`} />
                       </button>
                     </div>
                   </div>

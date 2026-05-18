@@ -427,7 +427,7 @@ export const Invoices: React.FC = () => {
           <h1 className={`text-xl sm:text-2xl lg:text-3xl font-bold ${dark ? 'text-white' : 'text-gray-900'}`}>Invoices</h1>
           <p className={`mt-0.5 text-sm ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>Manage and track all your invoices</p>
         </div>
-        <button onClick={() => navigate('/invoices/create')} className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm shadow-lg transition-all ${dark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-brand-900 text-white hover:bg-brand-800'}`}>
+        <button onClick={() => navigate('/system/invoices/create')} className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm shadow-lg transition-all ${dark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-brand-900 text-white hover:bg-brand-800'}`}>
           <Plus className="w-5 h-5" /><span>Create Invoice</span>
         </button>
       </div>
@@ -529,7 +529,7 @@ export const Invoices: React.FC = () => {
         <div className={`flex flex-col items-center justify-center py-16 rounded-2xl border ${dark ? 'bg-neutral-900/30 border-neutral-800/60' : 'bg-white border-gray-200'}`}>
           <FileText className={`w-12 h-12 mb-3 ${dark ? 'text-neutral-700' : 'text-gray-300'}`} />
           <p className={`text-sm font-medium ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>No invoices found</p>
-          <button onClick={() => navigate('/invoices/create')} className={`mt-3 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium ${dark ? 'bg-white text-black' : 'bg-brand-900 text-white'}`}>
+          <button onClick={() => navigate('/system/invoices/create')} className={`mt-3 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium ${dark ? 'bg-white text-black' : 'bg-brand-900 text-white'}`}>
             <Plus className="w-4 h-4" /> Create Invoice
           </button>
         </div>

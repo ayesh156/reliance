@@ -5,6 +5,7 @@ import { mockProducts, mockCategories } from '../../data/mockData';
 import { ArrowRight, Star, Truck, Shield, RotateCcw, Sparkles, TrendingUp, Headphones, CreditCard, Gift, MapPin, Clock } from 'lucide-react';
 import { Collections } from '../../components/sections/Collections';
 import { BestSellers } from '../../components/sections/BestSellers';
+import { BrandEthos } from '../../components/sections/BrandEthos';
 
 const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-LK')}`;
 
@@ -476,36 +477,7 @@ export const StoreFront: React.FC = () => {
       </section>
 
       {/* Newsletter */}
-      <section className="max-w-7xl mx-auto px-4 py-16 lg:py-20">
-        <div className={`rounded-3xl p-8 lg:p-12 text-center border ${
-          dark ? 'bg-brand-900/40 border-neutral-800/60' : 'bg-gray-50 border-gray-200'
-        }`}>
-          <h2 className={`font-display text-2xl lg:text-3xl font-bold mb-3 ${dark ? 'text-white' : 'text-brand-900'}`}>
-            Stay in the Loop
-          </h2>
-          <p className={`text-sm mb-6 max-w-md mx-auto ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>
-            Subscribe to get exclusive offers, new arrivals, and style tips delivered to your inbox.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className={`flex-1 px-5 py-3 rounded-full border text-sm ${
-                dark
-                  ? 'bg-neutral-900 border-neutral-700 text-white placeholder-neutral-500'
-                  : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
-              } focus:outline-none focus:ring-2 focus:ring-neutral-500/30`}
-            />
-            <button className={`px-6 py-3 rounded-full text-sm font-semibold transition-all shadow-lg ${
-              dark
-                ? 'bg-white text-black hover:bg-neutral-100'
-                : 'bg-brand-900 text-white hover:bg-brand-800'
-            }`}>
-              Subscribe
-            </button>
-          </div>
-        </div>
-      </section>
+      <BrandEthos />
     </div>
   );
 };
