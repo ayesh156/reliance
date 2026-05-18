@@ -237,7 +237,7 @@ export const CreateInvoice: React.FC = () => {
     <div className="space-y-4 sm:space-y-6 pb-8 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/invoices')} className={`p-2 rounded-xl transition-colors ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+        <button onClick={() => navigate('/system/invoices')} className={`p-2 rounded-xl transition-colors ${dark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}>
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex-1">
@@ -522,7 +522,7 @@ export const CreateInvoice: React.FC = () => {
 
       {/* Footer */}
       <div className={`flex items-center justify-between p-4 rounded-2xl ${dark ? 'bg-neutral-900/30 border border-neutral-800/60' : 'bg-white border border-gray-200 shadow-sm'}`}>
-        <button onClick={() => { if (step === 'items') setStep('customer'); else if (step === 'review') setStep('items'); else navigate('/invoices'); }}
+        <button onClick={() => { if (step === 'items') setStep('customer'); else if (step === 'review') setStep('items'); else navigate('/system/invoices'); }}
           className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${dark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
           <ChevronLeft className="w-4 h-4" />{step === 'customer' ? 'Cancel' : 'Back'}
         </button>
@@ -559,14 +559,14 @@ export const CreateInvoice: React.FC = () => {
             </div>
             {/* Footer */}
             <div className={`flex items-center justify-between px-4 py-3 border-t ${dark ? 'border-neutral-800' : 'border-gray-200'}`}>
-              <button onClick={() => navigate('/invoices')} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${dark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+              <button onClick={() => navigate('/system/invoices')} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${dark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
                 <X className="w-4 h-4" /> Skip
               </button>
               <div className="flex items-center gap-2">
                 <button onClick={() => { handlePrint(); }} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${dark ? 'bg-white text-black hover:bg-neutral-200' : 'bg-brand-900 text-white hover:bg-brand-800'}`}>
                   <Printer className="w-4 h-4" /> Print
                 </button>
-                <button onClick={() => navigate('/invoices')} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${dark ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                <button onClick={() => navigate('/system/invoices')} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${dark ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
                   Done
                 </button>
               </div>

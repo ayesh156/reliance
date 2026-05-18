@@ -22,6 +22,7 @@ import {
   ArrowUp,
   MessageCircle,
   ChevronDown,
+  LayoutDashboard,
 } from 'lucide-react';
 
 // ── Mega Menu Data ──────────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ export const EcommerceLayout: React.FC = () => {
           <div className="flex items-center gap-4">
             <span>Free delivery on orders over Rs. 5,000</span>
             <span>|</span>
-            <NavLink to="/" className="hover:text-white transition-colors">Admin Panel</NavLink>
+            <NavLink to="/system" className="hover:text-white transition-colors">Admin System</NavLink>
           </div>
         </div>
       </div>
@@ -485,6 +486,26 @@ export const EcommerceLayout: React.FC = () => {
                   <ChevronRight className="w-4 h-4 opacity-50" />
                 </NavLink>
               ))}
+
+              {/* Divider */}
+              <div className={`my-2 h-px ${dark ? 'bg-neutral-800' : 'bg-gray-100'}`} />
+
+              {/* Admin System link — mobile only */}
+              <NavLink
+                to="/system"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                  dark
+                    ? 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/50'
+                    : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <LayoutDashboard className="w-4 h-4" />
+                  Admin System
+                </span>
+                <ChevronRight className="w-4 h-4 opacity-40" />
+              </NavLink>
             </nav>
           </aside>
         </div>

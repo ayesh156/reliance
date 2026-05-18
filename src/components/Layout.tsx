@@ -30,14 +30,14 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { label: 'Products', path: '/products', icon: ShoppingBag },
-  { label: 'Categories', path: '/categories', icon: FolderOpen },
-  { label: 'Invoices', path: '/invoices', icon: FileText },
-  { label: 'Customers', path: '/customers', icon: Users },
-  { label: 'Suppliers', path: '/suppliers', icon: Truck },
-  { label: 'Reports', path: '/reports', icon: BarChart3 },
-  { label: 'Settings', path: '/settings', icon: Settings },
+  { label: 'Dashboard', path: '/system',            icon: LayoutDashboard },
+  { label: 'Products',  path: '/system/products',   icon: ShoppingBag },
+  { label: 'Categories',path: '/system/categories', icon: FolderOpen },
+  { label: 'Invoices',  path: '/system/invoices',   icon: FileText },
+  { label: 'Customers', path: '/system/customers',  icon: Users },
+  { label: 'Suppliers', path: '/system/suppliers',  icon: Truck },
+  { label: 'Reports',   path: '/system/reports',    icon: BarChart3 },
+  { label: 'Settings',  path: '/system/settings',   icon: Settings },
 ];
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -48,7 +48,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const navigate = useNavigate();
 
   const currentPage = navItems.find(n => {
-    if (n.path === '/') return location.pathname === '/';
+    if (n.path === '/system') return location.pathname === '/system';
     return location.pathname.startsWith(n.path);
   });
 
@@ -76,7 +76,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         {/* Nav Items */}
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-thin">
           {navItems.map(item => {
-            const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+            const isActive = item.path === '/system' ? location.pathname === '/system' : location.pathname.startsWith(item.path);
             return (
               <NavLink
                 key={item.path}
@@ -138,7 +138,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </div>
             <nav className="py-4 px-3 space-y-1">
               {navItems.map(item => {
-                const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+                const isActive = item.path === '/system' ? location.pathname === '/system' : location.pathname.startsWith(item.path);
                 return (
                   <NavLink
                     key={item.path}
@@ -160,9 +160,23 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 );
               })}
             </nav>
-            <div className={`absolute bottom-0 left-0 right-0 p-4 ${
+            <div className={`absolute bottom-0 left-0 right-0 p-4 space-y-2 ${
               theme === 'dark' ? 'border-t border-neutral-800/60' : 'border-t border-gray-200'
             }`}>
+              {/* Back to Website — mobile only */}
+              <NavLink
+                to="/"
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  theme === 'dark'
+                    ? 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <Globe className="w-5 h-5" />
+                <span>Back to Website</span>
+                <ExternalLink className="w-3.5 h-3.5 ml-auto opacity-50" />
+              </NavLink>
               <button className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 theme === 'dark' ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'
               }`}>
@@ -201,7 +215,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div className="flex items-center gap-2">
             {/* Visit Store */}
             <button
-              onClick={() => navigate('/store')}
+              onClick={() => navigate('/')}
               className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
                 theme === 'dark'
                   ? 'bg-neutral-900/50 border-neutral-800 hover:bg-neutral-800 text-neutral-300 hover:text-white'

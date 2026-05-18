@@ -730,7 +730,7 @@ export const Products: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/products/labels')} className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
+          <button onClick={() => navigate('/system/products/labels')} className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all ${
             dark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border border-neutral-700/50' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
           }`}>
             <Printer className="w-4 h-4" /> Print Labels
