@@ -3,6 +3,8 @@ import { NavLink } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { mockProducts, mockCategories } from '../../data/mockData';
 import { ArrowRight, Star, Truck, Shield, RotateCcw, Sparkles, TrendingUp, Headphones, CreditCard, Gift, MapPin, Clock } from 'lucide-react';
+import { Collections } from '../../components/sections/Collections';
+import { BestSellers } from '../../components/sections/BestSellers';
 
 const formatPrice = (n: number) => `Rs. ${n.toLocaleString('en-LK')}`;
 
@@ -22,82 +24,129 @@ export const StoreFront: React.FC = () => {
 
   return (
     <div className="overflow-hidden">
-      {/* Hero Section */}
-      <section className="relative min-h-[85vh] flex items-center">
-        <div className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&q=80"
-            alt="Fashion"
-            className="w-full h-full object-cover"
-          />
-          <div className={`absolute inset-0 ${dark
-            ? 'bg-gradient-to-r from-brand-950/95 via-brand-950/80 to-brand-950/40'
-            : 'bg-gradient-to-r from-white/95 via-white/80 to-white/30'
-          }`} />
+      {/* ── Hero Section — Editorial Split ──────────────────────────────── */}
+      <section className="relative w-full min-h-screen flex flex-col lg:flex-row overflow-hidden">
+
+        {/* LEFT PANEL — text content */}
+        <div className={`
+          relative z-10 flex flex-col justify-center
+          w-full lg:w-[45%] px-8 sm:px-12 lg:px-16 xl:px-24
+          py-24 lg:py-0
+          ${dark ? 'bg-brand-950' : 'bg-[#f7f4f0]'}
+        `}>
+          {/* Season tag */}
+          <div className="flex items-center gap-3 mb-8">
+            <span className={`h-px w-10 ${dark ? 'bg-neutral-600' : 'bg-neutral-400'}`} />
+            <span className={`text-[10px] font-semibold uppercase tracking-[0.25em] ${
+              dark ? 'text-neutral-400' : 'text-neutral-500'
+            }`}>
+              New Season — 2026
+            </span>
+          </div>
+
+          {/* Headline — serif display */}
+          <h1 className={`font-display leading-[1.05] mb-6 ${dark ? 'text-white' : 'text-brand-900'}`}>
+            <span className="block text-5xl sm:text-6xl xl:text-7xl font-light italic">
+              Dressed
+            </span>
+            <span className="block text-5xl sm:text-6xl xl:text-7xl font-bold mt-1">
+              With Intent.
+            </span>
+          </h1>
+
+          {/* Subheading */}
+          <p className={`text-sm sm:text-base leading-relaxed max-w-sm mb-10 ${
+            dark ? 'text-neutral-400' : 'text-gray-500'
+          }`}>
+            Curated collections for the modern Sri Lankan wardrobe — from effortless everyday wear to refined statement pieces.
+          </p>
+
+          {/* CTA row */}
+          <div className="flex flex-wrap items-center gap-4 mb-12">
+            <NavLink
+              to="/store/shop?filter=new"
+              className={`inline-flex items-center gap-2.5 px-7 py-3.5 text-sm font-semibold tracking-wide transition-all duration-300 ${
+                dark
+                  ? 'bg-white text-black hover:bg-neutral-100'
+                  : 'bg-brand-900 text-white hover:bg-brand-800'
+              }`}
+            >
+              Shop New Arrivals
+              <ArrowRight className="w-4 h-4" />
+            </NavLink>
+            <NavLink
+              to="/store/shop"
+              className={`text-sm font-medium underline underline-offset-4 transition-colors ${
+                dark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-brand-900'
+              }`}
+            >
+              View All
+            </NavLink>
+          </div>
+
+          {/* Stats row */}
+          <div className={`flex items-center gap-8 pt-8 border-t ${
+            dark ? 'border-neutral-800' : 'border-neutral-200'
+          }`}>
+            {[
+              { value: `${mockProducts.length}+`, label: 'Products' },
+              { value: `${activeCategories.length}+`, label: 'Categories' },
+              { value: '2K+', label: 'Happy Clients' },
+            ].map(stat => (
+              <div key={stat.label}>
+                <p className={`text-2xl font-bold font-display ${dark ? 'text-white' : 'text-brand-900'}`}>
+                  {stat.value}
+                </p>
+                <p className={`text-[11px] uppercase tracking-wider mt-0.5 ${
+                  dark ? 'text-neutral-500' : 'text-gray-400'
+                }`}>
+                  {stat.label}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 py-20 lg:py-0">
-          <div className="max-w-2xl">
-            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium mb-6 ${
-              dark ? 'bg-white/10 text-white/80 backdrop-blur-sm' : 'bg-brand-900/10 text-brand-800'
-            }`}>
-              <Sparkles className="w-3.5 h-3.5" />
-              New Season Collection 2026
-            </div>
+        {/* RIGHT PANEL — full-bleed image */}
+        <div className="relative w-full lg:w-[55%] min-h-[60vw] lg:min-h-0">
+          <img
+            src="https://images.unsplash.com/photo-1558171813-4c088753af8f?w=1400&q=85"
+            alt="New Season Collection"
+            className="absolute inset-0 w-full h-full object-cover object-top"
+          />
+          {/* Subtle dark vignette on left edge to blend with text panel */}
+          <div className={`absolute inset-y-0 left-0 w-24 ${
+            dark
+              ? 'bg-gradient-to-r from-brand-950 to-transparent'
+              : 'bg-gradient-to-r from-[#f7f4f0] to-transparent'
+          }`} />
 
-            <h1 className={`font-display text-4xl sm:text-5xl lg:text-7xl font-bold leading-[1.1] mb-6 ${
-              dark ? 'text-white' : 'text-brand-900'
-            }`}>
-              Elevate Your
-              <span className="block mt-1">
-                <span className={`${dark ? 'text-neutral-300' : 'text-neutral-500'}`}>Style</span>
-              </span>
-            </h1>
-
-            <p className={`text-base sm:text-lg leading-relaxed mb-8 max-w-lg ${
-              dark ? 'text-neutral-300' : 'text-gray-600'
-            }`}>
-              Discover curated fashion collections crafted for the modern Sri Lankan lifestyle. 
-              From casual essentials to statement pieces.
+          {/* Floating product badge */}
+          <div className={`
+            absolute bottom-8 left-8 lg:bottom-12 lg:left-12
+            px-5 py-4 rounded-2xl backdrop-blur-md shadow-xl
+            ${dark ? 'bg-brand-950/80 border border-neutral-800/60' : 'bg-white/85 border border-white/60'}
+          `}>
+            <p className={`text-[10px] uppercase tracking-[0.18em] mb-1 ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>
+              Featured
             </p>
+            <p className={`text-sm font-semibold ${dark ? 'text-white' : 'text-brand-900'}`}>
+              Summer Linen Edit
+            </p>
+            <p className={`text-xs mt-0.5 ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>
+              From Rs. 2,800
+            </p>
+          </div>
 
-            <div className="flex flex-wrap gap-4">
-              <NavLink
-                to="/store/shop"
-                className={`inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-all duration-300 shadow-xl ${
-                  dark
-                    ? 'bg-white text-black hover:bg-neutral-100 shadow-white/10'
-                    : 'bg-brand-900 text-white hover:bg-brand-800 shadow-brand-900/30'
-                }`}
-              >
-                Shop Now
-                <ArrowRight className="w-4 h-4" />
-              </NavLink>
-              <NavLink
-                to="/store/categories"
-                className={`inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-all border ${
-                  dark
-                    ? 'border-white/30 text-white hover:bg-white/10'
-                    : 'border-brand-900/30 text-brand-900 hover:bg-brand-900/5'
-                }`}
-              >
-                Browse Categories
-              </NavLink>
-            </div>
-
-            {/* Stats */}
-            <div className="flex flex-wrap items-center gap-4 sm:gap-8 mt-8 sm:mt-12">
-              {[
-                { label: 'Products', value: `${mockProducts.length}+` },
-                { label: 'Categories', value: `${activeCategories.length}+` },
-                { label: 'Happy Clients', value: '2K+' },
-              ].map(stat => (
-                <div key={stat.label}>
-                  <p className={`text-2xl font-bold ${dark ? 'text-white' : 'text-brand-900'}`}>{stat.value}</p>
-                  <p className={`text-xs ${dark ? 'text-neutral-400' : 'text-gray-500'}`}>{stat.label}</p>
-                </div>
-              ))}
-            </div>
+          {/* Sparkles badge top-right */}
+          <div className={`
+            absolute top-8 right-8
+            inline-flex items-center gap-2 px-4 py-2 rounded-full
+            backdrop-blur-md text-xs font-medium
+            ${dark ? 'bg-white/10 text-white/80' : 'bg-black/10 text-white'}
+          `}>
+            <Sparkles className="w-3.5 h-3.5" />
+            New Collection
           </div>
         </div>
       </section>
@@ -126,43 +175,13 @@ export const StoreFront: React.FC = () => {
         </div>
       </section>
 
-      {/* Categories */}
-      <section className="max-w-7xl mx-auto px-4 py-16 lg:py-20">
-        <div className="flex items-end justify-between mb-10">
-          <div>
-            <p className={`text-xs font-semibold uppercase tracking-[0.2em] mb-2 ${dark ? 'text-neutral-500' : 'text-gray-400'}`}>Browse by</p>
-            <h2 className={`font-display text-3xl lg:text-4xl font-bold ${dark ? 'text-white' : 'text-brand-900'}`}>Categories</h2>
-          </div>
-          <NavLink to="/store/categories" className={`hidden sm:flex items-center gap-1.5 text-sm font-medium transition-colors ${
-            dark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-          }`}>
-            View All <ArrowRight className="w-4 h-4" />
-          </NavLink>
-        </div>
+      {/* ── Curated Collections Grid ─────────────────────────────────────── */}
+      <Collections />
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          {activeCategories.map(cat => (
-            <NavLink
-              key={cat.id}
-              to={`/store/shop?category=${encodeURIComponent(cat.name)}`}
-              className="group relative overflow-hidden rounded-2xl aspect-[3/4] cursor-pointer"
-            >
-              <img
-                src={cat.image || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=500&q=80'}
-                alt={cat.name}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <p className="text-white font-semibold text-sm">{cat.name}</p>
-                <p className="text-white/60 text-xs mt-0.5">{cat.productCount} items</p>
-              </div>
-            </NavLink>
-          ))}
-        </div>
-      </section>
+      {/* ── Best Sellers Carousel ────────────────────────────────────────── */}
+      <BestSellers />
 
-      {/* Featured Products */}
+      {/* ── Featured Products ────────────────────────────────────────────── */}
       <section className={`py-16 lg:py-20 ${dark ? 'bg-brand-900/20' : 'bg-gray-50'}`}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-end justify-between mb-10">

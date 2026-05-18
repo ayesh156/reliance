@@ -189,7 +189,7 @@ export const ShopPage: React.FC = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
+    <div className="max-w-7xl mx-auto px-4 pt-6 pb-8 lg:pt-8 lg:pb-12">
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center gap-2 text-xs mb-3">
@@ -311,10 +311,10 @@ export const ShopPage: React.FC = () => {
         </div>
       )}
 
-      <div className="flex gap-8">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
         {/* Desktop Sidebar */}
-        <aside className={`hidden lg:block w-64 flex-shrink-0`}>
-          <div className={`sticky top-24 p-5 rounded-2xl border ${
+        <aside className="hidden lg:block w-64 flex-shrink-0">
+          <div className={`sticky top-28 p-5 rounded-2xl border ${
             dark ? 'bg-brand-900/30 border-neutral-800/60' : 'bg-gray-50 border-gray-200'
           }`}>
             <div className="flex items-center gap-2 mb-5">
