@@ -283,7 +283,8 @@ export const EcommerceLayout: React.FC = () => {
                 )}
               </NavLink>
               <NavLink
-                to="/"
+                to="/system"
+                aria-label="Admin System"
                 className={`hidden sm:flex p-2.5 rounded-full transition-all ${
                   dark ? 'hover:bg-neutral-800 text-neutral-300' : 'hover:bg-gray-100 text-gray-600'
                 }`}
