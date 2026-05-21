@@ -35,81 +35,81 @@ type MegaCategory = {
 const megaCategories: MegaCategory[] = [
   {
     label: 'New Arrivals',
-    path: '/store/shop?filter=new',
+    path: '/shop?filter=new',
     columns: [
       {
         heading: 'Just In',
         links: [
-          { label: 'This Week',     path: '/store/shop?filter=this-week' },
-          { label: 'Trending Now',  path: '/store/shop?filter=trending' },
-          { label: 'Back in Stock', path: '/store/shop?filter=restocked' },
-          { label: 'View All New',  path: '/store/shop?filter=new' },
+          { label: 'This Week',     path: '/shop?filter=this-week' },
+          { label: 'Trending Now',  path: '/shop?filter=trending' },
+          { label: 'Back in Stock', path: '/shop?filter=restocked' },
+          { label: 'View All New',  path: '/shop?filter=new' },
         ],
       },
     ],
   },
   {
     label: 'Men',
-    path: '/store/shop?category=Men',
+    path: '/shop?category=Men',
     columns: [
       {
         heading: 'Clothing',
         links: [
-          { label: 'T-Shirts',   path: '/store/shop?category=Men&type=tshirts' },
-          { label: 'Trousers',   path: '/store/shop?category=Men&type=trousers' },
-          { label: 'Shirts',     path: '/store/shop?category=Men&type=shirts' },
-          { label: 'Outerwear',  path: '/store/shop?category=Men&type=outerwear' },
-          { label: 'Knitwear',   path: '/store/shop?category=Men&type=knitwear' },
+          { label: 'T-Shirts',   path: '/shop?category=Men&type=tshirts' },
+          { label: 'Trousers',   path: '/shop?category=Men&type=trousers' },
+          { label: 'Shirts',     path: '/shop?category=Men&type=shirts' },
+          { label: 'Outerwear',  path: '/shop?category=Men&type=outerwear' },
+          { label: 'Knitwear',   path: '/shop?category=Men&type=knitwear' },
         ],
       },
       {
         heading: 'Collections',
         links: [
-          { label: 'Linen Edit',   path: '/store/shop?category=Men&collection=linen' },
-          { label: 'Organic',      path: '/store/shop?category=Men&collection=organic' },
-          { label: 'Formal',       path: '/store/shop?category=Men&collection=formal' },
-          { label: 'Sale',         path: '/store/shop?category=Men&sale=true' },
+          { label: 'Linen Edit',   path: '/shop?category=Men&collection=linen' },
+          { label: 'Organic',      path: '/shop?category=Men&collection=organic' },
+          { label: 'Formal',       path: '/shop?category=Men&collection=formal' },
+          { label: 'Sale',         path: '/shop?category=Men&sale=true' },
         ],
       },
     ],
   },
   {
     label: 'Women',
-    path: '/store/shop?category=Women',
+    path: '/shop?category=Women',
     columns: [
       {
         heading: 'Clothing',
         links: [
-          { label: 'Dresses',    path: '/store/shop?category=Women&type=dresses' },
-          { label: 'Tops',       path: '/store/shop?category=Women&type=tops' },
-          { label: 'Trousers',   path: '/store/shop?category=Women&type=trousers' },
-          { label: 'Outerwear',  path: '/store/shop?category=Women&type=outerwear' },
-          { label: 'Knitwear',   path: '/store/shop?category=Women&type=knitwear' },
+          { label: 'Dresses',    path: '/shop?category=Women&type=dresses' },
+          { label: 'Tops',       path: '/shop?category=Women&type=tops' },
+          { label: 'Trousers',   path: '/shop?category=Women&type=trousers' },
+          { label: 'Outerwear',  path: '/shop?category=Women&type=outerwear' },
+          { label: 'Knitwear',   path: '/shop?category=Women&type=knitwear' },
         ],
       },
       {
         heading: 'Collections',
         links: [
-          { label: 'Linen Edit',   path: '/store/shop?category=Women&collection=linen' },
-          { label: 'Organic',      path: '/store/shop?category=Women&collection=organic' },
-          { label: 'Evening',      path: '/store/shop?category=Women&collection=evening' },
-          { label: 'Sale',         path: '/store/shop?category=Women&sale=true' },
+          { label: 'Linen Edit',   path: '/shop?category=Women&collection=linen' },
+          { label: 'Organic',      path: '/shop?category=Women&collection=organic' },
+          { label: 'Evening',      path: '/shop?category=Women&collection=evening' },
+          { label: 'Sale',         path: '/shop?category=Women&sale=true' },
         ],
       },
     ],
   },
   {
     label: 'Accessories',
-    path: '/store/shop?category=Accessories',
+    path: '/shop?category=Accessories',
     columns: [
       {
         heading: 'Shop By Type',
         links: [
-          { label: 'Bags',     path: '/store/shop?category=Accessories&type=bags' },
-          { label: 'Scarves',  path: '/store/shop?category=Accessories&type=scarves' },
-          { label: 'Belts',    path: '/store/shop?category=Accessories&type=belts' },
-          { label: 'Hats',     path: '/store/shop?category=Accessories&type=hats' },
-          { label: 'Jewellery',path: '/store/shop?category=Accessories&type=jewellery' },
+          { label: 'Bags',     path: '/shop?category=Accessories&type=bags' },
+          { label: 'Scarves',  path: '/shop?category=Accessories&type=scarves' },
+          { label: 'Belts',    path: '/shop?category=Accessories&type=belts' },
+          { label: 'Hats',     path: '/shop?category=Accessories&type=hats' },
+          { label: 'Jewellery',path: '/shop?category=Accessories&type=jewellery' },
         ],
       },
     ],
@@ -118,8 +118,8 @@ const megaCategories: MegaCategory[] = [
 
 // ── Utility nav links (non-mega) ────────────────────────────────────────────
 const utilLinks = [
-  { label: 'About',   path: '/store/about' },
-  { label: 'Contact', path: '/store/contact' },
+  { label: 'About',   path: '/about' },
+  { label: 'Contact', path: '/contact' },
 ];
 
 export const EcommerceLayout: React.FC = () => {
@@ -179,7 +179,7 @@ export const EcommerceLayout: React.FC = () => {
             </button>
 
             {/* Logo */}
-            <NavLink to="/store" className="flex items-center gap-3">
+            <NavLink to="/" className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white rounded-xl overflow-hidden shadow-sm">
                 <img src="/images/logo.jpg" alt="Reliance" className="w-full h-full object-cover" />
               </div>
@@ -247,7 +247,7 @@ export const EcommerceLayout: React.FC = () => {
                 <Search className="w-5 h-5" />
               </button>
               <NavLink
-                to="/store/wishlist"
+                to="/wishlist"
                 className={`relative p-2.5 rounded-full transition-all hidden sm:flex ${
                   dark ? 'hover:bg-neutral-800 text-neutral-300' : 'hover:bg-gray-100 text-gray-600'
                 }`}
@@ -269,7 +269,7 @@ export const EcommerceLayout: React.FC = () => {
                 {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
               <NavLink
-                to="/store/cart"
+                to="/cart"
                 className="relative p-2.5 rounded-full transition-all group"
                 onClick={() => setIsCartOpen(false)}
               >
@@ -416,7 +416,7 @@ export const EcommerceLayout: React.FC = () => {
             <nav className="py-4 px-3 space-y-1">
               {/* Home */}
               <NavLink
-                to="/store"
+                to="/"
                 end
                 onClick={() => setMobileMenuOpen(false)}
                 className={({ isActive }) =>
@@ -557,7 +557,7 @@ export const EcommerceLayout: React.FC = () => {
               <ul className="space-y-2.5">
                 {['Shop All', 'New Arrivals', 'Best Sellers', 'Sale'].map(link => (
                   <li key={link}>
-                    <NavLink to="/store/shop" className={`text-sm transition-colors ${
+                    <NavLink to="/shop" className={`text-sm transition-colors ${
                       dark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                     }`}>{link}</NavLink>
                   </li>

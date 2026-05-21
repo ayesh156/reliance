@@ -80,7 +80,7 @@ export const BestSellers: React.FC = () => {
               <ChevronRight className="w-4 h-4" />
             </button>
             <NavLink
-              to="/store/shop"
+              to="/shop"
               className={`inline-flex items-center gap-2 text-sm font-medium transition-colors duration-150 ml-2 ${
                 dark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-brand-900'
               }`}
@@ -116,7 +116,7 @@ export const BestSellers: React.FC = () => {
         {/* Mobile CTA */}
         <div className="flex justify-center mt-8 sm:hidden">
           <NavLink
-            to="/store/shop"
+            to="/shop"
             className={`inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium border transition-all ${
               dark
                 ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'

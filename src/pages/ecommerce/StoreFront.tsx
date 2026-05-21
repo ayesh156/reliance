@@ -65,7 +65,7 @@ export const StoreFront: React.FC = () => {
           {/* CTA row */}
           <div className="flex flex-wrap items-center gap-4 mb-12">
             <NavLink
-              to="/store/shop?filter=new"
+              to="/shop?filter=new"
               className={`inline-flex items-center gap-2.5 px-7 py-3.5 text-sm font-semibold tracking-wide transition-all duration-300 ${
                 dark
                   ? 'bg-white text-black hover:bg-neutral-100'
@@ -76,7 +76,7 @@ export const StoreFront: React.FC = () => {
               <ArrowRight className="w-4 h-4" />
             </NavLink>
             <NavLink
-              to="/store/shop"
+              to="/shop"
               className={`text-sm font-medium underline underline-offset-4 transition-colors ${
                 dark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-brand-900'
               }`}
@@ -192,7 +192,7 @@ export const StoreFront: React.FC = () => {
               </p>
               <h2 className={`font-display text-3xl lg:text-4xl font-bold ${dark ? 'text-white' : 'text-brand-900'}`}>Featured Products</h2>
             </div>
-            <NavLink to="/store/shop" className={`hidden sm:flex items-center gap-1.5 text-sm font-medium transition-colors ${
+            <NavLink to="/shop" className={`hidden sm:flex items-center gap-1.5 text-sm font-medium transition-colors ${
               dark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
             }`}>
               Shop All <ArrowRight className="w-4 h-4" />
@@ -250,7 +250,7 @@ export const StoreFront: React.FC = () => {
           </div>
 
           <div className="flex justify-center mt-10 sm:hidden">
-            <NavLink to="/store/shop" className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium border transition-all ${
+            <NavLink to="/shop" className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium border transition-all ${
               dark ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-800' : 'border-gray-300 text-gray-700 hover:bg-gray-100'
             }`}>
               View All Products <ArrowRight className="w-4 h-4" />
@@ -278,7 +278,7 @@ export const StoreFront: React.FC = () => {
             Up to 40% off on selected items. Don't miss out on our exclusive end-of-season deals.
           </p>
           <NavLink
-            to="/store/shop"
+            to="/shop"
             className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-black rounded-full text-sm font-semibold hover:bg-neutral-100 transition-all shadow-xl"
           >
             Shop the Sale
@@ -451,7 +451,7 @@ export const StoreFront: React.FC = () => {
               ))}
             </div>
             <NavLink
-              to="/store/contact"
+              to="/contact"
               className={`inline-flex items-center gap-2 mt-8 px-8 py-3.5 rounded-full text-sm font-semibold transition-all shadow-lg ${
                 dark
                   ? 'bg-white text-black hover:bg-neutral-100 shadow-white/10'

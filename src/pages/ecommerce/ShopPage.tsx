@@ -195,7 +195,7 @@ export const ShopPage: React.FC = () => {
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center gap-2 text-xs mb-3">
-          <NavLink to="/store" className={`${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>Home</NavLink>
+          <NavLink to="/" className={`${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>Home</NavLink>
           <span className={dark ? 'text-neutral-600' : 'text-gray-300'}>/</span>
           <span className={dark ? 'text-neutral-300' : 'text-gray-700'}>Shop</span>
           {selectedCategory && (

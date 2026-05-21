@@ -28,7 +28,7 @@ export const ProductDetail: React.FC = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">
         <h2 className={`text-2xl font-bold mb-4 ${dark ? 'text-white' : 'text-gray-900'}`}>Product Not Found</h2>
-        <NavLink to="/store/shop" className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium ${
+        <NavLink to="/shop" className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium ${
           dark ? 'bg-white text-black' : 'bg-brand-900 text-white'
         }`}>
           <ArrowLeft className="w-4 h-4" /> Back to Shop
@@ -59,16 +59,16 @@ export const ProductDetail: React.FC = () => {
     if (!selectedSize) { toast.error('Please select a size'); return; }
     if (!selectedColor) { toast.error('Please select a color'); return; }
     addToCart(product, selectedSize, selectedColor, quantity);
-    navigate('/store/cart');
+    navigate('/cart');
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-2 text-xs mb-6 overflow-x-auto scrollbar-hide min-w-0">
-        <NavLink to="/store" className={`flex-shrink-0 ${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>Home</NavLink>
+        <NavLink to="/" className={`flex-shrink-0 ${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>Home</NavLink>
         <span className={`flex-shrink-0 ${dark ? 'text-neutral-600' : 'text-gray-300'}`}>/</span>
-        <NavLink to="/store/shop" className={`flex-shrink-0 ${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>Shop</NavLink>
+        <NavLink to="/shop" className={`flex-shrink-0 ${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>Shop</NavLink>
         <span className={`flex-shrink-0 ${dark ? 'text-neutral-600' : 'text-gray-300'}`}>/</span>
         <NavLink to={`/store/shop?category=${encodeURIComponent(product.category)}`} className={`flex-shrink-0 ${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>
           {product.category}

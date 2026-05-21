@@ -64,7 +64,7 @@ export const WishlistPage: React.FC = () => {
               Tap the heart on any product to save it here for later.
             </p>
             <NavLink
-              to="/store/shop"
+              to="/shop"
               className={`inline-flex items-center gap-2.5 px-7 py-3.5 text-sm font-semibold tracking-wide transition-all ${
                 dark
                   ? 'bg-white text-black hover:bg-neutral-100'
@@ -186,7 +186,7 @@ export const WishlistPage: React.FC = () => {
                 Items are saved to your device and may be removed if you clear your browser data.
               </p>
               <NavLink
-                to="/store/shop"
+                to="/shop"
                 className={`inline-flex items-center gap-2 text-sm font-medium transition-colors flex-shrink-0 ${
                   dark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-brand-900'
                 }`}

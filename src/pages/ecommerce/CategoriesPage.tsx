@@ -14,7 +14,7 @@ export const CategoriesPage: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs mb-6">
-        <NavLink to="/store" className={`${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>Home</NavLink>
+        <NavLink to="/" className={`${dark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'}`}>Home</NavLink>
         <span className={dark ? 'text-neutral-600' : 'text-gray-300'}>/</span>
         <span className={dark ? 'text-neutral-300' : 'text-gray-700'}>Categories</span>
       </div>
