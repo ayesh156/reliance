@@ -35,7 +35,7 @@ export const CartPage: React.FC = () => {
           Discover our latest collections and add your favourite pieces.
         </p>
         <NavLink
-          to="/store/shop"
+          to="/shop"
           className={`inline-flex items-center gap-2.5 px-7 py-3.5 text-sm font-semibold tracking-wide transition-all ${
             dark ? 'bg-white text-black hover:bg-neutral-100' : 'bg-brand-900 text-white hover:bg-brand-800'
           }`}
@@ -56,7 +56,7 @@ export const CartPage: React.FC = () => {
         <div className="mb-10 lg:mb-14">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.15em] mb-5">
-            <NavLink to="/store" className={`transition-colors ${
+            <NavLink to="/" className={`transition-colors ${
               dark ? 'text-neutral-600 hover:text-neutral-400' : 'text-neutral-400 hover:text-neutral-600'
             }`}>Home</NavLink>
             <span className={dark ? 'text-neutral-700' : 'text-neutral-300'}>/</span>
@@ -208,7 +208,7 @@ export const CartPage: React.FC = () => {
               dark ? 'border-neutral-800' : 'border-neutral-200'
             }`}>
               <NavLink
-                to="/store/shop"
+                to="/shop"
                 className={`inline-flex items-center gap-2 text-sm font-medium transition-colors ${
                   dark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-brand-900'
                 }`}

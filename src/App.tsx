@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import './index.css';
-import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { CartProvider } from './contexts/CartContext';
 import { WishlistProvider } from './contexts/WishlistContext';
@@ -66,7 +66,7 @@ function App() {
       <CartProvider>
         <WishlistProvider>
           <ThemedToaster />
-          <HashRouter>
+          <BrowserRouter>
             <ScrollToTop />
             <Routes>
 
@@ -99,7 +99,7 @@ function App() {
               <Route path="/store/*"  element={<Navigate to="/"         replace />} />
 
             </Routes>
-          </HashRouter>
+          </BrowserRouter>
         </WishlistProvider>
       </CartProvider>
     </ThemeProvider>
